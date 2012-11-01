@@ -6,6 +6,10 @@ http://membres-liglab.imag.fr/donsez/ujf/messi/sc/examples/javaworld/jw-07-javac
 
 http://docs.oracle.com/javase/6/docs/jre/api/security/smartcardio/spec/javax/smartcardio/
 
+http://www.wrankl.de/SCTables/SCTables.html
+
+http://www.cardwerk.com/smartcards/smartcard_standard_ISO7816-4_5_basic_organizations.aspx#chap5_4
+
 ### Package AID
 8168614861
 
