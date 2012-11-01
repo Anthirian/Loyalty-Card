@@ -1,1 +1,16 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?><jcop.project debug_comp="0" version="2"><package debug_comp="0" exportmap="false" jcop.id=""><aid jcop.id="package"/><version jcop.id="package">1.0</version></package><package debug_comp="0" exportmap="false" jcop.id="card"><aid jcop.id="package">8168614861</aid><cunit jcop.id="Card.java"><applet jcop.id="Card"><aid jcop.id="applet">1186868135</aid></applet></cunit><version jcop.id="package">1.0</version></package></jcop.project>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<jcop.project debug_comp="0" version="2">
+	<package debug_comp="0" exportmap="false" jcop.id="">
+		<aid jcop.id="package"/>
+		<version jcop.id="package">1.0</version>
+	</package>
+	<package debug_comp="0" exportmap="false" jcop.id="card">
+		<aid jcop.id="package">8168614861</aid>
+		<cunit jcop.id="Card.java">
+			<applet jcop.id="Card">
+				<aid jcop.id="applet">1186868135</aid>
+			</applet>
+		</cunit>
+		<version jcop.id="package">1.0</version>
+	</package>
+</jcop.project>
