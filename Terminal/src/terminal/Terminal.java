@@ -27,6 +27,7 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 import terminal.Terminal.CardThread;
@@ -69,14 +70,16 @@ public class Terminal extends JPanel implements ActionListener {
 
     CardChannel channel;
     JTextField display;
-    JPanel keypad;
+    JTextArea scherm;
+    JPanel keypad, numpad;
+    
 	
     /**
      * The constructor creates the GUI and starts the Card Thread for interaction with the card
 	 * @param parent
 	 */
 	public Terminal(JFrame parent) {
-		buildGUI(parent);
+		createGUI(parent);
         setEnabled(false);
         (new CardThread()).start();
 	}
@@ -95,34 +98,40 @@ public class Terminal extends JPanel implements ActionListener {
         display.setForeground(Color.green);
         add(display, BorderLayout.NORTH);
         keypad = new JPanel(new GridLayout(5, 5));
-        key(null);
-        key(null);
-        key(null);
-        key(null);
-        key("C");
-        key("7");
-        key("8");
-        key("9");
-        key(":");
-        key("ST");
-        key("4");
-        key("5");
-        key("6");
-        key("x");
-        key("RM");
-        key("1");
-        key("2");
-        key("3");
-        key("-");
-        key("M+");
-        key("0");
-        key(null);
-        key(null);
-        key("+");
-        key("=");
+        key(null); key(null); key(null); key(null); key("C"); 
+        key("7"); key("8"); key("9"); key(":"); key("ST");
+        key("4"); key("5"); key("6"); key("x"); key("RM");
+        key("1"); key("2"); key("3"); key("-"); key("M+");
+        key("0"); key(null); key(null); key("+"); key("=");
         add(keypad, BorderLayout.CENTER);
         parent.addWindowListener(new CloseEventListener());
     }
+	
+	private void createGUI(JFrame parent) {
+		setLayout(new BorderLayout());
+		add(createKeypad(), BorderLayout.WEST);
+		add(createDisplay(), BorderLayout.NORTH);
+		parent.addWindowListener(new CloseEventListener());
+	}
+	
+	/**
+	 * Builds a display to use in the GUI of the terminal
+	 * @return
+	 */
+	private JTextArea createDisplay() {
+		// TODO Probably change this to a canvas rather than a text area
+		scherm = new JTextArea("\n\n\n\n\n\n\tInitial Text", 12, 2);
+		return scherm;
+	}
+	
+	private JPanel createKeypad() {
+		numpad = new JPanel(new GridLayout(4, 3));
+		key("7"); key("8"); key("9");
+		key("4"); key("5"); key("6");
+		key("1"); key("2"); key("3");
+		key(null); key("0"); key(null);
+		return numpad;
+	}
 	
 	/**
 	 * Create a button with text on it
@@ -130,11 +139,11 @@ public class Terminal extends JPanel implements ActionListener {
 	 */
 	void key(String txt) {
         if (txt == null) {
-            keypad.add(new JLabel());
+            numpad.add(new JLabel());
         } else {
             JButton button = new JButton(txt);
             button.addActionListener(this);
-            keypad.add(button);
+            numpad.add(button);
         }
     }
 
@@ -173,6 +182,13 @@ public class Terminal extends JPanel implements ActionListener {
         return PREFERRED_SIZE;
     }
     
+    /**
+     * Displays any text on the display of the terminal
+     * @param text The text that should be displayed on screen
+     */
+    private void displayOnScreen(String text) {
+    	scherm.setText(text);
+    }
     
     //********************************************//
     // Subclasses to be used by the terminal only //
