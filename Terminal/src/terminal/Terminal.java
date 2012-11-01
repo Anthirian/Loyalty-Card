@@ -4,10 +4,13 @@
 package terminal;
 
 import java.awt.BorderLayout;
+import java.awt.Canvas;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.LayoutManager;
 import java.awt.event.ActionEvent;
@@ -48,7 +51,7 @@ public class Terminal extends JPanel implements ActionListener {
 	private static final long serialVersionUID = 1L;
 	static final String TITLE = "Loyalty Card Terminal";
     static final Font FONT = new Font("Monospaced", Font.BOLD, 24);
-    static final Dimension PREFERRED_SIZE = new Dimension(300, 300);
+    static final Dimension PREFERRED_SIZE = new Dimension(750, 750);
     
     static final int DISPLAY_WIDTH = 20;
     static final String MSG_ERROR = "    -- error --     ";
@@ -70,10 +73,9 @@ public class Terminal extends JPanel implements ActionListener {
 
     CardChannel channel;
     JTextField display;
-    JTextArea scherm;
+    Display scherm;
     JPanel keypad, numpad;
     
-	
     /**
      * The constructor creates the GUI and starts the Card Thread for interaction with the card
 	 * @param parent
@@ -86,6 +88,7 @@ public class Terminal extends JPanel implements ActionListener {
 	
 	/**
 	 * Copy and paste of the calculator applet, needs to be completely rewritten
+	 * At the moment this servers only for quick reference and is not used anymore
 	 * @param parent
 	 */
 	void buildGUI(JFrame parent) {
@@ -99,36 +102,46 @@ public class Terminal extends JPanel implements ActionListener {
         add(display, BorderLayout.NORTH);
         keypad = new JPanel(new GridLayout(5, 5));
         key(null); key(null); key(null); key(null); key("C"); 
-        key("7"); key("8"); key("9"); key(":"); key("ST");
-        key("4"); key("5"); key("6"); key("x"); key("RM");
-        key("1"); key("2"); key("3"); key("-"); key("M+");
-        key("0"); key(null); key(null); key("+"); key("=");
+        key("7");  key("8");  key("9");  key(":");  key("ST");
+        key("4");  key("5");  key("6");  key("x");  key("RM");
+        key("1");  key("2");  key("3");  key("-");  key("M+");
+        key("0");  key(null); key(null); key("+");  key("=");
         add(keypad, BorderLayout.CENTER);
         parent.addWindowListener(new CloseEventListener());
     }
 	
+	/**
+	 * First attempt at creating the terminal's GUI
+	 * Currently features only a Display and a Keypad
+	 * @param parent
+	 */
 	private void createGUI(JFrame parent) {
 		setLayout(new BorderLayout());
-		add(createKeypad(), BorderLayout.WEST);
-		add(createDisplay(), BorderLayout.NORTH);
+		add(createCanvas(), BorderLayout.NORTH);
+		add(createKeypad(), BorderLayout.CENTER);
 		parent.addWindowListener(new CloseEventListener());
 	}
 	
 	/**
-	 * Builds a display to use in the GUI of the terminal
-	 * @return
+	 * Create a Display to use for notifying the user of new information
+	 * @return a Display that can be added to the GUI
 	 */
-	private JTextArea createDisplay() {
-		// TODO Probably change this to a canvas rather than a text area
-		scherm = new JTextArea("\n\n\n\n\n\n\tInitial Text", 12, 2);
+	private Display createCanvas() {
+		scherm = new Display();
+		scherm.setBackground(new Color(100, 100, 155));
+		scherm.setSize(375,375);
 		return scherm;
 	}
 	
+	/**
+	 * Create a keypad to use in verifying the user's PIN
+	 * @return a JPanel that can be added to the GUI
+	 */
 	private JPanel createKeypad() {
 		numpad = new JPanel(new GridLayout(4, 3));
-		key("7"); key("8"); key("9");
-		key("4"); key("5"); key("6");
-		key("1"); key("2"); key("3");
+		key("7");  key("8"); key("9");
+		key("4");  key("5"); key("6");
+		key("1");  key("2"); key("3");
 		key(null); key("0"); key(null);
 		return numpad;
 	}
@@ -154,8 +167,16 @@ public class Terminal extends JPanel implements ActionListener {
 	public void actionPerformed(ActionEvent ae) {
 		// TODO What to do when we notice an event?
 		Object source = ae.getSource();
+		if (source instanceof JButton) {
+			System.out.printf("\nYou pressed button %s!", ((JButton) source).getText());
+			/* 
+			 * This doesn't seem to work yet. 
+			 * Ideally we would like to print the text 
+			 * above in the Display instead of in the Console
+			 */
+			scherm.repaint();
+		}
 	}
-	
 	
 	/**
 	 * Send a keystroke to the card
@@ -184,15 +205,31 @@ public class Terminal extends JPanel implements ActionListener {
     
     /**
      * Displays any text on the display of the terminal
-     * @param text The text that should be displayed on screen
+     * @param text The text that should be displayed on screen, as a String
      */
-    private void displayOnScreen(String text) {
-    	scherm.setText(text);
-    }
+    private void displayMessage(String text) {
+    	// TODO This has yet to be made compatible with the new Display canvas
+    	char[] characters = text.toCharArray();
+		//g.drawChars(characters, 0, characters.length, 0, 0);
+		scherm.repaint();
+    }    
     
     //********************************************//
     // Subclasses to be used by the terminal only //
     //********************************************//
+    
+    /**
+	 * A Canvas that is intended to function as a display for important information
+	 * @author Geert Smelt
+	 * @author Robin Oostrum
+	 */
+	public class Display extends Canvas {
+		private static final long serialVersionUID = 1L;
+		
+		public void paint(Graphics g) {
+			// TODO What to do when the display is (re)painted?
+		}
+	}
     
     /**
 	 * A simple event listener class to add to the Terminal's GUI
