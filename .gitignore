@@ -1,0 +1,12 @@
+*.class
+
+*.ear
+*.jar
+*.war
+
+.classpath
+.project
+.metadata/*
+CalcApplet/*
+CalcTerminal/*
+ChipknipTerminal/*
