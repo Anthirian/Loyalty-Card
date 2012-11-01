@@ -63,6 +63,9 @@ public class Terminal extends JPanel implements ActionListener {
      * The Command APDU is fixed. It always has the same prefix, followed by the AID of the applet.
      */
     static final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, APPLET_AID);
+    static final byte[] empty_data = {};
+    static final CommandAPDU CONSULT_BALANCE_APDU = new CommandAPDU((byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, empty_data);
+    // TODO create a real APDU for consulting balance
 
     CardChannel channel;
     JTextField display;
@@ -139,24 +142,15 @@ public class Terminal extends JPanel implements ActionListener {
 	 * @see java.awt.event.ActionListener#actionPerformed(java.awt.event.ActionEvent)
 	 */
 	@Override
-	public void actionPerformed(ActionEvent arg0) {
+	public void actionPerformed(ActionEvent ae) {
 		// TODO What to do when we notice an event?
-
+		Object source = ae.getSource();
 	}
-	/**
-	 * Copy and paste of another applet's interface
-	 * @author Geert Smelt
-	 *
-	 */
-	class CloseEventListener extends WindowAdapter {
-        public void windowClosing(WindowEvent we) {
-            System.exit(0);
-        }
-    }
+	
 	
 	/**
 	 * Send a keystroke to the card
-	 * @param ins
+	 * @param ins the key that was pressed
 	 * @return the response from the card, as a ResponseAPDU
 	 */
     public ResponseAPDU sendKey(byte ins) {
@@ -167,16 +161,40 @@ public class Terminal extends JPanel implements ActionListener {
 			return null;
 		}
     }
-
+    
+    //***********************//
+    //  Getters and setters  //
+    //***********************//
+    
     /**
      * Getter for the preferred window size
      */
     public Dimension getPreferredSize() {
         return PREFERRED_SIZE;
     }
-	
+    
+    
+    //********************************************//
+    // Subclasses to be used by the terminal only //
+    //********************************************//
+    
     /**
-     * The CardThread is used to set up a connection with the card and interact with it
+	 * A simple event listener class to add to the Terminal's GUI
+	 * @author Geert Smelt
+	 * @author Robin Oostrum
+	 */
+	class CloseEventListener extends WindowAdapter {
+		/**
+		 * Override the default window close event to perform a clean exit
+		 */
+        public void windowClosing(WindowEvent we) {
+            System.exit(0);
+        }
+        // TODO Add more event listeners?
+    }
+    
+    /**
+     * The CardThread class is used to set up a connection with the card and interact with it
      * @author Geert Smelt
      * @author Robin Oostrum
      */
@@ -199,5 +217,4 @@ public class Terminal extends JPanel implements ActionListener {
         frame.pack();
         frame.setVisible(true);
 	}
-
 }
