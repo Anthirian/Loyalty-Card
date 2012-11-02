@@ -11,7 +11,7 @@ http://www.wrankl.de/SCTables/SCTables.html
 http://www.cardwerk.com/smartcards/smartcard_standard_ISO7816-4_5_basic_organizations.aspx#chap5_4
 
 ### Package AID
-8168614861
+11 86 86 81 35
 
 ### Applet AID
-1186868135
+11 86 86 81 35 24
