@@ -54,9 +54,9 @@ public class Terminal extends JPanel implements ActionListener {
     static final Dimension PREFERRED_SIZE = new Dimension(750, 750);
     
     static final int DISPLAY_WIDTH = 20;
-    static final String MSG_ERROR = "    -- error --     ";
-    static final String MSG_DISABLED = " -- insert card --  ";
-    static final String MSG_INVALID = " -- invalid card -- ";
+    static final String MSG_ERROR = "-- error --";
+    static final String MSG_DISABLED = "-- Please insert card --";
+    static final String MSG_INVALID = "-- invalid card --";
     
     /*
      * I have no idea how to know what our AID is. I have manually generated the AID.
@@ -174,7 +174,7 @@ public class Terminal extends JPanel implements ActionListener {
 			 * Ideally we would like to print the text 
 			 * above in the Display instead of in the Console
 			 */
-			scherm.repaint();
+			displayMessage("Hoi!");
 		}
 	}
 	
@@ -228,6 +228,18 @@ public class Terminal extends JPanel implements ActionListener {
 		
 		public void paint(Graphics g) {
 			// TODO What to do when the display is (re)painted?
+			char[] data = MSG_DISABLED.toCharArray();
+			g.setColor(new Color(150, 200, 0));
+			int windowHeight = (int) getPreferredSize().getHeight();
+			int windowWidth = (int) getPreferredSize().getWidth();
+			int rectHeight = 150;
+			int rectWidth = 300;
+			int vOffset = ((windowHeight - rectHeight) / 2);
+			int hOffset = ((windowWidth - rectWidth) / 2);
+			g.fillRoundRect(hOffset, vOffset, rectWidth, rectHeight, 20, 20);
+			
+			g.setColor(new Color(0, 10, 0));
+			g.drawChars(data, 0, data.length, hOffset+10+rectWidth/4, vOffset+10+rectHeight/2); // The window title is 10 pixels high
 		}
 	}
     
