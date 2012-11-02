@@ -1,6 +1,3 @@
-/**
- * 
- */
 package terminal;
 
 import java.awt.BorderLayout;
@@ -17,6 +14,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.List;
 
 import javax.smartcardio.Card;
 import javax.smartcardio.CardChannel;
@@ -62,7 +60,7 @@ public class Terminal extends JPanel implements ActionListener {
      * I have no idea how to know what our AID is. I have manually generated the AID.
      * The AID is needed to verify the card holds the correct applet before attempting to connect to it.
      */
-    static final byte[] APPLET_AID = {(byte) 0x11, (byte) 0x86, (byte) 0x86, (byte) 0x81, (byte) 0x35};
+    static final byte[] APPLET_AID = {(byte) 0x11, (byte) 0x86, (byte) 0x86, (byte) 0x81, (byte) 0x35, (byte) 0x24};
     /*
      * The Command APDU is fixed. It always has the same prefix, followed by the AID of the applet.
      */
@@ -174,7 +172,6 @@ public class Terminal extends JPanel implements ActionListener {
 			 * Ideally we would like to print the text 
 			 * above in the Display instead of in the Console
 			 */
-			displayMessage("Hoi!");
 		}
 	}
 	
@@ -209,9 +206,11 @@ public class Terminal extends JPanel implements ActionListener {
      */
     private void displayMessage(String text) {
     	// TODO This has yet to be made compatible with the new Display canvas
-    	char[] characters = text.toCharArray();
+    	//char[] characters = text.toCharArray();
 		//g.drawChars(characters, 0, characters.length, 0, 0);
-		scherm.repaint();
+		//scherm.repaint();
+    	
+    	System.out.println(text);
     }    
     
     //********************************************//
@@ -266,6 +265,82 @@ public class Terminal extends JPanel implements ActionListener {
 	class CardThread extends Thread {
         public void run() {
         	// TODO Connect the terminal to the card
+        	try {
+            	// Generate a list of card readers with cards present
+            	TerminalFactory tf = TerminalFactory.getDefault();
+    	    	CardTerminals ct = tf.terminals();
+    	    	List<CardTerminal> cs = ct.list(CardTerminals.State.CARD_PRESENT);
+    	    	if (cs.isEmpty()) {
+    	    		System.err.println("No terminals with a card found.");
+    	    		return;
+    	    	}
+    	    	// We have found at least one reader with a card present, so we try connecting
+    	    	while (true) {
+    	    		try {
+    	    			for(CardTerminal c : cs) {
+    	    				if (c.isCardPresent()) {
+    	    					try {
+    	    						// Try connecting using any protocol available (*)
+    	    						Card card = c.connect("*");
+    	    						try {
+    	    							channel = card.getBasicChannel();
+    	    							
+    	    							ResponseAPDU resp = channel.transmit(SELECT_APDU);
+    	    							
+    	    							if (resp.getSW() != 0x9000) {
+    	    								throw new Exception("Select failed");
+    	    							}
+    	    	    	    			displayMessage("Connection established!");
+    	    	                        setEnabled(true);
+    	    	                        
+    	    	                        // Do the actual work here
+    	    	                        
+    	    	                        
+    	    	                        // Wait for the card to be removed
+    	    	                        while (c.isCardPresent());
+    	    	                        	setEnabled(false);
+    	    	                        displayMessage(MSG_DISABLED);
+    	    	                        break;
+    	    						} catch (CardException ce) {
+    	    							System.err.println("The operation failed: " + ce.getMessage());
+    	    						} catch (IllegalStateException ise) {
+    	    							System.err.println("Channel has been closed or the corresponding Card has been disconnected: " + ise.getMessage());
+    	    						} catch (IllegalArgumentException iae) {
+    	    							System.err.println("The APDU encodes a MANAGE CHANNEL command: " + iae.getMessage());
+    	    						} catch (NullPointerException npe) {
+    	    							System.err.println("Command is null: " + npe.getMessage());
+    	    						} catch (Exception e) {
+    	    							System.err.println("Card does not contain CalcApplet?!: " + e.getMessage());
+    	    							displayMessage(MSG_INVALID);
+    	    							sleep(2000);
+    	    							displayMessage(MSG_DISABLED);
+    	    							continue;
+    	    						}
+    	    					} catch (CardException e) {
+    	    						System.err.println("Couldn't connect to card!");
+    	    						displayMessage(MSG_INVALID);
+    	    						sleep(2000);
+    	    						displayMessage(MSG_DISABLED);
+    	    						continue;
+    	    					}
+    	    				} else {
+    	    					System.err.println("No card present!");
+    	    					displayMessage(MSG_INVALID);
+    	    					sleep(2000);
+    	    					displayMessage(MSG_DISABLED);
+    	    					continue;
+    	    				}
+    	    			}
+    	    		} catch (CardException e) {
+    	    			System.err.println("Card status problem!");
+    	    		}
+    	    	}
+        	} catch (Exception e) {
+                setEnabled(false);
+                displayMessage(MSG_ERROR);
+                System.out.println("ERROR: " + e.getMessage());
+                e.printStackTrace();
+            }
         }    
 	}
 
