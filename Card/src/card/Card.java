@@ -34,7 +34,27 @@ public class Card extends Applet implements ISO7816 {
 		
 		/*
 		 * Decide what to do based on the instruction byte
-		 */		
+		 * 
+		 * (Incomplete) list of INS bytes as listed on http://www.cardwerk.com/smartcards/smartcard_standard_ISO7816-4_5_basic_organizations.aspx
+		 * '0E' 	ERASE BINARY
+		 * '20' 	VERIFY
+		 * '70' 	MANAGE CHANNEL
+		 * '82' 	EXTERNAL AUTHENTICATE
+		 * '84' 	GET CHALLENGE
+		 * '88' 	INTERNAL AUTHENTICATE
+		 * 'A4' 	SELECT FILE
+		 * 'B0' 	READ BINARY
+		 * 'B2' 	READ RECORD(S)
+		 * 'C0' 	GET RESPONSE
+		 * 'C2' 	ENVELOPE
+		 * 'CA' 	GET DATA
+		 * 'D0' 	WRITE BINARY
+		 * 'D2' 	WRITE RECORD
+		 * 'D6' 	UPDATE BINARY
+		 * 'DA' 	PUT DATA
+		 * 'DC' 	UPDATE DATA
+		 * 'E2' 	APPEND RECORD 
+		 */	
 		switch (ins) {
 		case (byte) 0x00:
 			break;
