@@ -286,12 +286,14 @@ public class Terminal extends JPanel implements ActionListener {
     	    							channel = card.getBasicChannel();
     	    							
     	    							ResponseAPDU resp = channel.transmit(SELECT_APDU);
+    	    							int status = resp.getSW();
     	    							
-    	    							if (resp.getSW() != 0x9000) {
-    	    								throw new Exception("Select failed");
+    	    							if (status == 0x6999) {
+    	    								throw new Exception("Applet selection failed");
+    	    							} else if (status == 0x9000) {
+    	    								displayMessage("Connection established!");
+    	    								setEnabled(true);
     	    							}
-    	    	    	    			displayMessage("Connection established!");
-    	    	                        setEnabled(true);
     	    	                        
     	    	                        // Do the actual work here
     	    	                        
@@ -301,6 +303,7 @@ public class Terminal extends JPanel implements ActionListener {
     	    	                        	setEnabled(false);
     	    	                        displayMessage(MSG_DISABLED);
     	    	                        break;
+    	    	                        
     	    						} catch (CardException ce) {
     	    							System.err.println("The operation failed: " + ce.getMessage());
     	    						} catch (IllegalStateException ise) {
@@ -310,10 +313,8 @@ public class Terminal extends JPanel implements ActionListener {
     	    						} catch (NullPointerException npe) {
     	    							System.err.println("Command is null: " + npe.getMessage());
     	    						} catch (Exception e) {
-    	    							System.err.println("Card does not contain CalcApplet?!: " + e.getMessage());
-    	    							displayMessage(MSG_INVALID);
+    	    							System.err.println(e.getMessage());
     	    							sleep(2000);
-    	    							displayMessage(MSG_DISABLED);
     	    							continue;
     	    						}
     	    					} catch (CardException e) {
