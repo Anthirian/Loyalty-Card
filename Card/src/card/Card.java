@@ -30,16 +30,33 @@ public class Card extends Applet implements ISO7816 {
 		byte[] buf = apdu.getBuffer();
 		short le = -1;
 		short value = -1;
+		byte ins = buf[ISO7816.OFFSET_INS];
 		
 		/*
 		 * Decide what to do based on the instruction byte
-		 */
-		switch (buf[ISO7816.OFFSET_INS]) {
+		 */		
+		switch (ins) {
 		case (byte) 0x00:
 			break;
 		case '0':
-			//TODO Do something useful
-			value = 42;
+			break;
+		case '1':
+			break;
+		case '2':
+			break;
+		case '3':
+			break;
+		case '4':
+			break;
+		case '5':
+			break;
+		case '6':
+			break;
+		case '7':
+			break;
+		case '8':
+			break;
+		case '9':
 			break;
 		default:
 			// good practice: If you don't know the INStruction, say so:
