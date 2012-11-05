@@ -264,19 +264,20 @@ public class Terminal extends JPanel implements ActionListener {
      */
 	class CardThread extends Thread {
         public void run() {
-        	// TODO Connect the terminal to the card
         	try {
             	// Generate a list of card readers with cards present
             	TerminalFactory tf = TerminalFactory.getDefault();
     	    	CardTerminals ct = tf.terminals();
-    	    	List<CardTerminal> cs = ct.list(CardTerminals.State.CARD_PRESENT);
-    	    	if (cs.isEmpty()) {
-    	    		System.err.println("No terminals with a card found.");
-    	    		return;
-    	    	}
-    	    	// We have found at least one reader with a card present, so we try connecting
+    	    	List<CardTerminal> cs;
+    	    	
     	    	while (true) {
     	    		try {
+    	    			cs = ct.list(CardTerminals.State.CARD_PRESENT);
+    	    	    	if (cs.isEmpty()) {
+    	    	    		System.err.println("None of the terminals have a card in them");
+    	    	    		sleep(2000);
+    	    	    		continue;
+    	    	    	}
     	    			for(CardTerminal c : cs) {
     	    				if (c.isCardPresent()) {
     	    					try {
@@ -295,13 +296,13 @@ public class Terminal extends JPanel implements ActionListener {
     	    								setEnabled(true);
     	    							}
     	    	                        
-    	    	                        // Do the actual work here
+    	    	                        // TODO Do the actual work here
     	    	                        
     	    	                        
     	    	                        // Wait for the card to be removed
     	    	                        while (c.isCardPresent());
-    	    	                        	setEnabled(false);
-    	    	                        displayMessage(MSG_DISABLED);
+    	    	                        
+    	    	                        setEnabled(false);
     	    	                        break;
     	    	                        
     	    						} catch (CardException ce) {
@@ -317,23 +318,19 @@ public class Terminal extends JPanel implements ActionListener {
     	    							sleep(2000);
     	    							continue;
     	    						}
-    	    					} catch (CardException e) {
-    	    						System.err.println("Couldn't connect to card!");
-    	    						displayMessage(MSG_INVALID);
-    	    						sleep(2000);
-    	    						displayMessage(MSG_DISABLED);
+    	    					} catch (CardException ce) {
+    	    						System.err.println("Couldn't connect to card: " + ce.getMessage());
+    	    						sleep(2000);    	    						
     	    						continue;
     	    					}
     	    				} else {
-    	    					System.err.println("No card present!");
-    	    					displayMessage(MSG_INVALID);
+    	    					System.err.println("No card present in reader " + c.getName());
     	    					sleep(2000);
-    	    					displayMessage(MSG_DISABLED);
     	    					continue;
     	    				}
     	    			}
-    	    		} catch (CardException e) {
-    	    			System.err.println("Card status problem!");
+    	    		} catch (CardException ce) {
+    	    			System.err.println("Card status problem: " + ce.getMessage());
     	    		}
     	    	}
         	} catch (Exception e) {
