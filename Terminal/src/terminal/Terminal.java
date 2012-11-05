@@ -177,10 +177,11 @@ public class Terminal extends JPanel implements ActionListener {
 	
 	/**
 	 * Send a keystroke to the card
-	 * @param ins the key that was pressed
+	 * @param ins The instruction byte to send
 	 * @return the response from the card, as a ResponseAPDU
 	 */
     public ResponseAPDU sendKey(byte ins) {
+    	// I don't know why Le is hardcoded to 5
         CommandAPDU apdu = new CommandAPDU(0, ins, 0, 0, 5);
         try {
 			return channel.transmit(apdu);
