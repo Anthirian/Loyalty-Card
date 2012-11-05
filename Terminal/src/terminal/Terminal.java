@@ -266,81 +266,89 @@ public class Terminal extends JPanel implements ActionListener {
 	class CardThread extends Thread {
         public void run() {
         	try {
-            	// Generate a list of card readers with cards present
-            	TerminalFactory tf = TerminalFactory.getDefault();
-    	    	CardTerminals ct = tf.terminals();
-    	    	List<CardTerminal> cs;
-    	    	
-    	    	while (true) {
-    	    		try {
-    	    			cs = ct.list(CardTerminals.State.CARD_PRESENT);
-    	    	    	if (cs.isEmpty()) {
-    	    	    		System.err.println("None of the terminals have a card in them");
-    	    	    		sleep(2000);
-    	    	    		continue;
-    	    	    	}
-    	    			for(CardTerminal c : cs) {
-    	    				if (c.isCardPresent()) {
-    	    					try {
-    	    						// Try connecting using any protocol available (*)
-    	    						Card card = c.connect("*");
-    	    						try {
-    	    							channel = card.getBasicChannel();
-    	    							
-    	    							ResponseAPDU resp = channel.transmit(SELECT_APDU);
-    	    							int status = resp.getSW();
-    	    							
-    	    							if (status == 0x6999) {
-    	    								throw new Exception("Applet selection failed");
-    	    							} else if (status == 0x9000) {
-    	    								displayMessage("Connection established!");
-    	    								setEnabled(true);
-    	    							}
-    	    	                        
-    	    	                        // TODO Do the actual work here
-    	    	                        
-    	    	                        
-    	    	                        // Wait for the card to be removed
-    	    	                        while (c.isCardPresent());
-    	    	                        
-    	    	                        setEnabled(false);
-    	    	                        break;
-    	    	                        
-    	    						} catch (CardException ce) {
-    	    							System.err.println("The operation failed: " + ce.getMessage());
-    	    						} catch (IllegalStateException ise) {
-    	    							System.err.println("Channel has been closed or the corresponding Card has been disconnected: " + ise.getMessage());
-    	    						} catch (IllegalArgumentException iae) {
-    	    							System.err.println("The APDU encodes a MANAGE CHANNEL command: " + iae.getMessage());
-    	    						} catch (NullPointerException npe) {
-    	    							System.err.println("Command is null: " + npe.getMessage());
-    	    						} catch (Exception e) {
-    	    							System.err.println(e.getMessage());
-    	    							sleep(2000);
-    	    							continue;
-    	    						}
-    	    					} catch (CardException ce) {
-    	    						System.err.println("Couldn't connect to card: " + ce.getMessage());
-    	    						sleep(2000);    	    						
-    	    						continue;
-    	    					}
-    	    				} else {
-    	    					System.err.println("No card present in reader " + c.getName());
-    	    					sleep(2000);
-    	    					continue;
-    	    				}
-    	    			}
-    	    		} catch (CardException ce) {
-    	    			System.err.println("Card status problem: " + ce.getMessage());
-    	    		}
-    	    	}
+            	connect();
+        	} catch (InterruptedException ie) {
+        		System.out.println("Sleep operation was interrupted during connecting: " + ie.getMessage());
         	} catch (Exception e) {
                 setEnabled(false);
-                displayMessage(MSG_ERROR);
                 System.out.println("ERROR: " + e.getMessage());
                 e.printStackTrace();
             }
-        }    
+        }
+
+		/**
+		 * Attempts to connect to any card reader that has a card present.
+		 * @throws InterruptedException If a connection attempt fails and the intermittent sleep time has been interrupted.
+		 */
+		private void connect() throws InterruptedException {
+			TerminalFactory tf = TerminalFactory.getDefault();
+			CardTerminals ct = tf.terminals();
+			List<CardTerminal> cs;
+			
+			while (true) {
+				try {
+					cs = ct.list(CardTerminals.State.CARD_PRESENT);
+			    	if (cs.isEmpty()) {
+			    		System.err.println("None of the terminals have cards present");
+			    		sleep(2000);
+			    		continue;
+			    	}
+					for(CardTerminal c : cs) {
+						if (c.isCardPresent()) {
+							try {
+								// Try connecting using any protocol available (*)
+								Card card = c.connect("*");
+								try {
+									channel = card.getBasicChannel();
+									
+									ResponseAPDU resp = channel.transmit(SELECT_APDU);
+									int status = resp.getSW();
+									
+									if (status == 0x6999) {
+										throw new Exception("Applet selection failed");
+									} else if (status == 0x9000) {
+										displayMessage("Connection established!");
+										setEnabled(true);
+									}
+			                        
+			                        // TODO Do the actual work here
+			                        
+			                        
+			                        // Wait for the card to be removed
+			                        while (c.isCardPresent());
+			                        
+			                        setEnabled(false);
+			                        break;
+			                        
+								} catch (CardException ce) {
+									System.err.println("The operation failed: " + ce.getMessage());
+								} catch (IllegalStateException ise) {
+									System.err.println("Channel has been closed or the corresponding Card has been disconnected: " + ise.getMessage());
+								} catch (IllegalArgumentException iae) {
+									System.err.println("The APDU encodes a MANAGE CHANNEL command: " + iae.getMessage());
+								} catch (NullPointerException npe) {
+									System.err.println("Command is null: " + npe.getMessage());
+								} catch (Exception e) {
+									System.err.println(e.getMessage());
+									sleep(2000);
+									continue;
+								}
+							} catch (CardException ce) {
+								System.err.println("Couldn't connect to card: " + ce.getMessage());
+								sleep(2000);    	    						
+								continue;
+							}
+						} else {
+							System.err.println("No card present in reader " + c.getName());
+							sleep(2000);
+							continue;
+						}
+					}
+				} catch (CardException ce) {
+					System.err.println("Card status problem: " + ce.getMessage());
+				}
+			}
+		}    
 	}
 
 	/**
