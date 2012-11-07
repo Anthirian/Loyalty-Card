@@ -14,6 +14,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.util.List;
 
 import javax.smartcardio.Card;
@@ -31,6 +33,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
+import rsa.RSAKeyGen;
 import terminal.Terminal.CardThread;
 import terminal.Terminal.CloseEventListener;
 
@@ -43,8 +46,8 @@ import terminal.Terminal.CloseEventListener;
 @SuppressWarnings("unused")
 public class Terminal extends JPanel implements ActionListener {
 
-	/**
-	 * Set some default values
+	/*
+	 * Set some default values, most of which are no longer used
 	 */
 	private static final long serialVersionUID = 1L;
 	static final String TITLE = "Loyalty Card Terminal";
@@ -61,9 +64,7 @@ public class Terminal extends JPanel implements ActionListener {
      * The AID is needed to verify the card holds the correct applet before attempting to connect to it.
      */
     static final byte[] APPLET_AID = {(byte) 0x11, (byte) 0x86, (byte) 0x86, (byte) 0x81, (byte) 0x35, (byte) 0x24};
-    /*
-     * The Command APDU is fixed. It always has the same prefix, followed by the AID of the applet.
-     */
+    // The SELECT APDU is fixed. It always has the same prefix, followed by the AID of the applet.
     static final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, APPLET_AID);
     static final byte[] empty_data = {};
     static final CommandAPDU CONSULT_BALANCE_APDU = new CommandAPDU((byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, empty_data);
@@ -74,6 +75,9 @@ public class Terminal extends JPanel implements ActionListener {
     Display scherm;
     JPanel keypad, numpad;
     
+    RSAPublicKey pkT;
+    RSAPrivateKey skT;
+    
     /**
      * The constructor creates the GUI and starts the Card Thread for interaction with the card
 	 * @param parent
@@ -81,6 +85,7 @@ public class Terminal extends JPanel implements ActionListener {
 	public Terminal(JFrame parent) {
 		createGUI(parent);
         setEnabled(false);
+        generateKeypair();
         (new CardThread()).start();
 	}
 	
@@ -176,6 +181,16 @@ public class Terminal extends JPanel implements ActionListener {
 	}
 	
 	/**
+	 * Generate a keypair to use for authentication and save the 
+	 * Currently only RSA is being used
+	 */
+	public void generateKeypair() {
+		RSAKeyGen kg = new RSAKeyGen();
+		pkT = kg.getPublicKey();
+		skT = kg.getPrivateKey();
+	}
+	
+	/**
 	 * Send a keystroke to the card
 	 * @param ins The instruction byte to send
 	 * @return the response from the card, as a ResponseAPDU
@@ -239,7 +254,8 @@ public class Terminal extends JPanel implements ActionListener {
 			g.fillRoundRect(hOffset, vOffset, rectWidth, rectHeight, 20, 20);
 			
 			g.setColor(new Color(0, 10, 0));
-			g.drawChars(data, 0, data.length, hOffset+10+rectWidth/4, vOffset+10+rectHeight/2); // The window title is 10 pixels high
+			g.drawChars(data, 0, data.length, hOffset + 10 + rectWidth / 4, vOffset + 10 + rectHeight / 2);
+			// The window title is 10 pixels high
 		}
 	}
     
