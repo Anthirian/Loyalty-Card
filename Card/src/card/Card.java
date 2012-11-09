@@ -17,7 +17,14 @@ import javacardx.crypto.Cipher;
  * @author Robin Oostrum
  */
 public class Card extends Applet implements ISO7816 {
+	private static final byte INS_SET_PUB_MODULUS = (byte)0x02;
+	private static final byte INS_SET_PRIV_MODULUS = (byte)0x12;
+	private static final byte INS_SET_PRIV_EXP = (byte)0x22;
+	private static final byte INS_SET_PUB_EXP = (byte)0x32;
+	private static final byte INS_ISSUE = (byte)0x40;
 	
+	private static final byte INS_ENCRYPT = (byte)0xE0;
+	private static final byte INS_DECRYPT = (byte)0xD0;
 	/*
 	 * States of the card. If the card is in the initialization state, 
 	 * the crypto keys can be written. If the card has been issued, 
