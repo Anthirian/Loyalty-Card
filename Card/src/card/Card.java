@@ -4,14 +4,49 @@ import javacard.framework.APDU;
 import javacard.framework.Applet;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
+import javacard.framework.JCSystem;
 import javacard.framework.Util;
+import javacard.security.KeyBuilder;
+import javacard.security.RSAPrivateKey;
+import javacard.security.RSAPublicKey;
+import javacardx.crypto.Cipher;
 
 /**
- *
+ * Java Card applet to be used for the Loyalty Card system
  * @author Geert Smelt
  * @author Robin Oostrum
  */
 public class Card extends Applet implements ISO7816 {
+	
+	/*
+	 * States of the card. If the card is in the initialization state, 
+	 * the crypto keys can be written. If the card has been issued, 
+	 * the keys can be used for cryptography.
+	 */
+	private static final byte STATE_INIT = 0;
+	private static final byte STATE_ISSUED = 1;
+	
+	/** Temporary buffer in RAM. */
+	byte[] tmp;
+	
+	/** The applet state (INIT or ISSUED). */
+	byte state;
+	
+	/** Public Key of the Card. Used for encryption. */
+	RSAPublicKey pkC;
+	/** Secret Key of the Card. Used for decryption. */
+	RSAPrivateKey skC;
+	
+	/** Cipher for encryption and decryption. */
+	Cipher cipher;
+	
+	public Card () {
+		tmp = JCSystem.makeTransientByteArray((short) 256, JCSystem.CLEAR_ON_RESET);
+		pkC = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
+		skC = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE, KeyBuilder.LENGTH_RSA_512, false);
+		cipher = Cipher.getInstance(Cipher.ALG_RSA_PKCS1, false);
+		state = STATE_INIT;
+	}
 
 	public static void install(byte[] bArray, short bOffset, byte bLength) {
 		// GP-compliant JavaCard applet registration
@@ -54,34 +89,69 @@ public class Card extends Applet implements ISO7816 {
 		 * 'DA' 	PUT DATA
 		 * 'DC' 	UPDATE DATA
 		 * 'E2' 	APPEND RECORD 
-		 */	
-		switch (ins) {
-		case (byte) 0x00:
-			break;
-		case '0':
-			break;
-		case '1':
-			break;
-		case '2':
-			break;
-		case '3':
-			break;
-		case '4':
-			break;
-		case '5':
-			break;
-		case '6':
-			break;
-		case '7':
-			break;
-		case '8':
-			break;
-		case '9':
-			break;
-		default:
-			// good practice: If you don't know the INStruction, say so:
-			ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
-		}
+		 */
+		switch(state) {
+        case STATE_INIT:
+        	switch (ins) {
+			case (byte) 0x00:
+				break;
+			case '0':
+				break;
+			case '1':
+				break;
+			case '2':
+				break;
+			case '3':
+				break;
+			case '4':
+				break;
+			case '5':
+				break;
+			case '6':
+				break;
+			case '7':
+				break;
+			case '8':
+				break;
+			case '9':
+				break;
+			default:
+				// good practice: If you don't know the INStruction, say so:
+				ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
+			}
+        	break;
+        case STATE_ISSUED:
+        	switch (ins) {
+			case (byte) 0x00:
+				break;
+			case '0':
+				break;
+			case '1':
+				break;
+			case '2':
+				break;
+			case '3':
+				break;
+			case '4':
+				break;
+			case '5':
+				break;
+			case '6':
+				break;
+			case '7':
+				break;
+			case '8':
+				break;
+			case '9':
+				break;
+			default:
+				// good practice: If you don't know the INStruction, say so:
+				ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
+			}
+        	break;
+        default:
+           ISOException.throwIt(SW_CONDITIONS_NOT_SATISFIED);
+        }
 		
 		/* The last part of this function is the generation of a ResponseAPDU 
 		 * Currently the code is incomplete and should be fixed. 

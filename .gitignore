@@ -9,5 +9,7 @@
 .metadata/*
 CalcApplet/*
 CalcTerminal/*
+CryptoApplet/*
+CryptoTerminal/*
 ChipknipTerminal/*
 */bin
