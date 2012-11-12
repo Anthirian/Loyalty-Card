@@ -201,12 +201,12 @@ public class Terminal extends JPanel implements ActionListener {
 		// TODO What to do when we notice an event?
 		Object source = ae.getSource();
 		if (source instanceof JButton) {
-			System.out.printf("\nYou pressed button %s!", ((JButton) source).getText());
 			/* 
 			 * This doesn't seem to work yet. 
 			 * Ideally we would like to print the text 
 			 * above in the Display instead of in the Console
 			 */
+			displayMessage("\nYou pressed button " + ((JButton) source).getText() + "!");
 		}
 	}
 	
@@ -269,7 +269,7 @@ public class Terminal extends JPanel implements ActionListener {
 	 * @author Geert Smelt
 	 * @author Robin Oostrum
 	 */
-	public class Display extends Canvas {
+	private class Display extends Canvas {
 		private static final long serialVersionUID = 1L;
 		
 		public void paint(Graphics g) {
