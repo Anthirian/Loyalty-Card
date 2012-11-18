@@ -61,6 +61,9 @@ public class Card extends Applet implements ISO7816 {
 	/** Cipher for encryption and decryption. */
 	private final Cipher cipher;
 	
+	/** Contains */
+	private short balance = -1;
+	
 	
 	public Card () {
 		// Dit levert problemen op zonder import.
@@ -139,13 +142,13 @@ public class Card extends Applet implements ISO7816 {
         		handshake(apdu);
         		break;
 			case INS_ADD_PTS:
-				add(apdu);
+				balance = add(apdu);
 				break;
 			case INS_SPEND_PTS:
-				spend(apdu);
+				balance = spend(apdu);
 				break;
 			case INS_CHECK_BAL:
-				check(apdu);
+				balance = check(apdu);
 				break;
 			default:
 				// good practice: If you don't know the INStruction, say so:
@@ -166,10 +169,9 @@ public class Card extends Applet implements ISO7816 {
             ISOException.throwIt((short) (SW_WRONG_LENGTH | 5));
         }
         
-		/* This line is used to indicate if the CalcApplet has a value in memory.
-		 * It is not being used in the Card applet.
-		 * 
-		 * buf[0] = (m == 0) ? (byte) 0x00 : (byte) 0x01;
+		/* 
+		 * Somewhere in here we have to send the balance back to the terminal.
+		 * I don't know how or when that data is being set however.
 		 */
 		
 		// Set the INStruction byte (?) to 0 
@@ -196,6 +198,41 @@ public class Card extends Applet implements ISO7816 {
 		 * but this should be done via a CommandAPDU other than SELECT.
 		 */
 		return true;
+	}
+	
+	/**
+	 * Handles the processing of the data of the incoming APDU. First the data is retrieved from the data field of the APDU. 
+	 * After that, the ResponseAPDU is prepared and ready to be filled in by the calling function.
+	 * @param apdu The CommandAPDU to retrieve the data from.
+	 * @return A blank ResponseAPDU to be filled in by the calling function. 
+	 */
+	private void handleAPDU(APDU apdu) {
+		
+		// Process the data
+		short data = apdu.setIncomingAndReceive();
+		short le = -1;
+		byte[] ciphertext = new byte[2];
+		
+		// Convert the data from short to a two-byte array
+		ciphertext[0] = (byte)(data & 0xff);
+		ciphertext[1] = (byte)((data >> 8) & 0xff);
+		
+		// Decrypt the ciphertext
+		byte[] plaintext = decrypt(ciphertext, skC);
+		
+		// TODO decide what to do with the data after decryption
+		
+		
+		
+		// Prepare for response		
+		le = apdu.setOutgoing();
+		
+		// TODO add better response length check, 5 seems random
+        if (le < 5) {
+            ISOException.throwIt((short) (SW_WRONG_LENGTH | 5));
+        }
+        
+        apdu.setOutgoingLength(le);		
 	}
 
 	/**
@@ -237,18 +274,24 @@ public class Card extends Applet implements ISO7816 {
 		return plaintext;
 	}
 	
-	private void add(APDU apdu) {
+	private short add(APDU apdu) {
 		// TODO Add credits to the current balance
+		handleAPDU(apdu);
 		short balance = 0;
+		return balance;
 	}
 	
-	private void spend(APDU apdu) {
+	private short spend(APDU apdu) {
 		// TODO Subtract credits from the current balance, if sufficient
+		handleAPDU(apdu);
 		short balance = 0;
+		return balance;
 	}
 	
-	private void check(APDU apdu) {
+	private short check(APDU apdu) {
 		// TODO Report the current balance of the card
+		handleAPDU(apdu);
 		short balance = 0;
+		return balance;
 	}
 }
