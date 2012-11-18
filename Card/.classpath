@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="com.ibm.bluez.jcop.eclipse.containers.cardconfig/com.ibm.bluez.jcop.eclipse.cardconfigs.custom;com.ibm.bluez.jcop.eclipse.cardapis.jc221;com.ibm.bluez.jcop.eclipse.cardapis.gp211"/>
+	<classpathentry kind="lib" path="/usr/lib/jvm/java-6-openjdk/jre/lib/ext/bcprov-jdk15on-147.jar"/>
+	<classpathentry kind="con" path="com.ibm.bluez.jcop.eclipse.containers.cardconfig/com.ibm.bluez.jcop.eclipse.cardconfigs.custom;com.ibm.bluez.jcop.eclipse.cardapis.jc221;com.ibm.bluez.jcop.eclipse.cardapis.gp211;com.ibm.bluez.jcop.eclipse.targetpacks.smartmx.cardapis.jcopx"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
