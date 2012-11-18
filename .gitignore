@@ -5,7 +5,6 @@
 *.war
 
 .classpath
-.project
 .metadata/*
 CalcApplet/*
 CalcTerminal/*
