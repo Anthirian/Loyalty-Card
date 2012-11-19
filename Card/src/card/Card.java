@@ -1,5 +1,6 @@
 package card;
 
+import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -15,7 +16,9 @@ import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
 import javacard.framework.Util;
 
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 
 // We need this JCE provider because it has more features than the regular one
@@ -71,7 +74,7 @@ public class Card extends Applet implements ISO7816 {
 	
 	/** Contains */
 	private short balance = -1;
-	
+	SecureRandom random;
 	
 	public Card () {
 		// Dit levert problemen op zonder import.
@@ -90,7 +93,7 @@ public class Card extends Applet implements ISO7816 {
 		byte[] input = new byte[] {(byte) 0xBE, (byte) 0xEF};
 		KeyPairGenerator kpg;
 		
-		SecureRandom random = new SecureRandom();
+		random = new SecureRandom();
 		byte[] bytes = new byte[64]; // 512 bits
 		random.nextBytes(bytes);
 		
@@ -294,19 +297,25 @@ public class Card extends Applet implements ISO7816 {
 		apdu.sendBytesLong(ciphertext, (short) 0, respSize);
 	}
 	
-	private byte[] encrypt(byte[] plaintext, RSAPublicKey key)  {
+	private byte[] encrypt(byte[] plaintext, Key key)  {
 		byte[] ciphertext = null;
-		if (key.isInitialized()) {
-			// TODO Do the actual encryption here
-		}
+		try {
+			cipher.init(Cipher.ENCRYPT_MODE, key, random);
+			ciphertext = cipher.doFinal(plaintext);
+		} catch (InvalidKeyException e) {} 
+		catch (IllegalBlockSizeException e) {}
+		catch (BadPaddingException e) {}
 		return ciphertext;
 	}
 	
-	private byte[] decrypt(byte[] ciphertext, RSAPrivateKey key) {
+	private byte[] decrypt(byte[] ciphertext, Key key) {
 		byte[] plaintext = null;
-		if (key.isInitialized()) {
-			// TODO Do the actual decryption here
-		}
+		try {
+			cipher.init(Cipher.DECRYPT_MODE, key);
+			plaintext = cipher.doFinal(ciphertext);
+		} catch (InvalidKeyException e1) {}
+		catch (IllegalBlockSizeException e) {} 
+		catch (BadPaddingException e) {}
 		return plaintext;
 	}
 	
