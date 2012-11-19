@@ -22,7 +22,6 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 
 // We need this JCE provider because it has more features than the regular one
-import org.bouncycastle.asn1.pkcs.RSAPublicKey;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 /**
@@ -31,18 +30,12 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
  * @author Robin Oostrum
  */
 public class Card extends Applet implements ISO7816 {
-	private static final byte INS_SET_PUB_MODULUS = (byte) 0x02;
-	private static final byte INS_SET_PRIV_MODULUS = (byte) 0x12;
-	private static final byte INS_SET_PRIV_EXP = (byte) 0x22;
-	private static final byte INS_SET_PUB_EXP = (byte) 0x32;
 	private static final byte INS_ISSUE = (byte) 0x40;
 	
 	/* INStructions to save the terminal's public key on the card */
 	private static final byte INS_SET_TERM_PUB_MOD = (byte) 0x42;
 	private static final byte INS_SET_TERM_PUB_EXP = (byte) 0x52;
 	
-	private static final byte INS_ENCRYPT = (byte) 0xE0;
-	private static final byte INS_DECRYPT = (byte) 0xD0;
 	private static final byte INS_MUT_AUTH = (byte) 0xAA;
 	
 	/* INStructions that allow the terminal to change or view the amount of credits */
@@ -72,53 +65,56 @@ public class Card extends Applet implements ISO7816 {
 	/** Cipher for encryption and decryption. */
 	private final Cipher cipher;
 	
-	/** Contains */
 	private short balance = -1;
 	SecureRandom random;
 	
 	public Card () {
-		// Dit levert problemen op zonder import.
-		// Zodra je de Security import doet en de JDK 6 toevoegt aan build path is de packagenaam niet ok.
-		// Wel nodig omdat standaard crypto van Java niet genoeg is volgens website Erik
-		Security.addProvider(new BouncyCastleProvider());
 		
-		tmp = JCSystem.makeTransientByteArray((short) 256, JCSystem.CLEAR_ON_RESET);
-		// pkC = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
-		// skC = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE, KeyBuilder.LENGTH_RSA_512, false);
-		// cipher = Cipher.getInstance(Cipher.ALG_RSA_PKCS1, false);
+		// Check if the card has already been initialized. If so, don't do it again
+		if (state == STATE_INIT) {			
 		
-		// pkT = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
-		
-		// Generate key pair using the Bouncy Castle (BC) security provider		
-		byte[] input = new byte[] {(byte) 0xBE, (byte) 0xEF};
-		KeyPairGenerator kpg;
-		
-		random = new SecureRandom();
-		byte[] bytes = new byte[64]; // 512 bits
-		random.nextBytes(bytes);
-		
-		try {
-			Cipher cipher = Cipher.getInstance("RSA/NONE/NoPadding", "BC");
-			kpg = KeyPairGenerator.getInstance("RSA", "BC");
-
-			kpg.initialize(512, random);
+			// Dit levert problemen op zonder import.
+			// Zodra je de Security import doet en de JDK 6 toevoegt aan build path is de packagenaam niet ok.
+			// Wel nodig omdat standaard crypto van Java niet genoeg is volgens website Erik
+			Security.addProvider(new BouncyCastleProvider());
 			
-			KeyPair kp = kpg.generateKeyPair();
-			Key pkC = kp.getPublic();
-			Key skC = kp.getPrivate();
-		} catch (NoSuchAlgorithmException e) {
-			// TODO Report authentication failure
-			return;
-		} catch (NoSuchProviderException e) {
-			// TODO Report authentication failure
-			return;
-		} catch (NoSuchPaddingException e) {
-			// TODO Report authentication failure
-			return;
+			tmp = JCSystem.makeTransientByteArray((short) 256, JCSystem.CLEAR_ON_RESET);
+			// pkC = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
+			// skC = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE, KeyBuilder.LENGTH_RSA_512, false);
+			// cipher = Cipher.getInstance(Cipher.ALG_RSA_PKCS1, false);
+			
+			// pkT = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
+			
+			// Generate key pair using the Bouncy Castle (BC) security provider
+			KeyPairGenerator kpg;
+			
+			random = new SecureRandom();
+			byte[] bytes = new byte[64]; // 512 bits
+			random.nextBytes(bytes);
+			
+			try {
+				Cipher cipher = Cipher.getInstance("RSA/NONE/NoPadding", "BC");
+				kpg = KeyPairGenerator.getInstance("RSA", "BC");
+	
+				kpg.initialize(512, random);
+				
+				KeyPair kp = kpg.generateKeyPair();
+				Key pkC = kp.getPublic();
+				Key skC = kp.getPrivate();
+			} catch (NoSuchAlgorithmException e) {
+				// TODO Report authentication failure
+				return;
+			} catch (NoSuchProviderException e) {
+				// TODO Report authentication failure
+				return;
+			} catch (NoSuchPaddingException e) {
+				// TODO Report authentication failure
+				return;
+			}
+			
+			// Set the state of the card to initialization to allow for key generation and uploading
+			state = STATE_INIT;
 		}
-		
-		// Set the state of the card to initialization to allow for key generation and uploading
-		state = STATE_INIT;
 	}
 
 	public static void install(byte[] bArray, short bOffset, byte bLength) {
@@ -144,30 +140,14 @@ public class Card extends Applet implements ISO7816 {
         case STATE_INIT:
         	// When initializing we have several options to set cryptographic keys etc.
         	switch (ins) {
-        	/* 
-        	 * The first four instructions are to save the parts of the public and secret key to memory.
-        	 * Saving either key requires two CommandAPDUs, once for the modulus and once for the exponent.
-        	 */
-        	case INS_SET_PUB_MODULUS:
-        		pkC.setModulus(buf, (short) 0, lc);
-        		break;
-        	case INS_SET_PUB_EXP:
-        		pkC.setExponent(buf, (short) 0, lc);
-        		break;
-        	case INS_SET_PRIV_MODULUS:
-        		skC.setModulus(buf, (short) 0, lc);
-        		break;
-        	case INS_SET_PRIV_EXP:
-        		skC.setExponent(buf, (short) 0, lc);
-        		break;
         	/*
-        	 * The fifth and sixth instruction are to save the parts of the public key of the terminal to memory.
+        	 * The first two instruction are to save the parts of the public key of the terminal to memory.
         	 */
         	case INS_SET_TERM_PUB_MOD:
-        		pkT.setModulus(buf, (short) 0, lc);
+        		// Set the terminal's public key
         		break;
         	case INS_SET_TERM_PUB_EXP:
-        		pkT.setExponent(buf, (short) 0, lc);
+        		// Set the terminal's public key
         		break;
 			default:
 				// good practice: If you don't know the INStruction, say so:
