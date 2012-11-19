@@ -1,17 +1,25 @@
 package card;
 
+import java.security.Key;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.Security;
+import java.security.SecureRandom;
+
 import javacard.framework.APDU;
 import javacard.framework.Applet;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
 import javacard.framework.Util;
-import javacard.security.KeyBuilder;
-import javacard.security.RSAPrivateKey;
-import javacard.security.RSAPublicKey;
-import javacardx.crypto.Cipher;
+
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
 
 // We need this JCE provider because it has more features than the regular one
+import org.bouncycastle.asn1.pkcs.RSAPublicKey;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 /**
@@ -53,11 +61,11 @@ public class Card extends Applet implements ISO7816 {
 	byte state;
 	
 	/** Public Key of the Card. Used for encryption. */
-	private final RSAPublicKey pkC;
+	private final Key pkC;
 	/** Secret Key of the Card. Used for decryption. */
-	private final RSAPrivateKey skC;
+	private final Key skC;
 	/** Public Key of the Terminal. Used for encryption */
-	private final RSAPublicKey pkT;
+	private final Key pkT;
 	/** Cipher for encryption and decryption. */
 	private final Cipher cipher;
 	
@@ -69,14 +77,42 @@ public class Card extends Applet implements ISO7816 {
 		// Dit levert problemen op zonder import.
 		// Zodra je de Security import doet en de JDK 6 toevoegt aan build path is de packagenaam niet ok.
 		// Wel nodig omdat standaard crypto van Java niet genoeg is volgens website Erik
-		// Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+		Security.addProvider(new BouncyCastleProvider());
 		
 		tmp = JCSystem.makeTransientByteArray((short) 256, JCSystem.CLEAR_ON_RESET);
-		pkC = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
-		skC = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE, KeyBuilder.LENGTH_RSA_512, false);
-		cipher = Cipher.getInstance(Cipher.ALG_RSA_PKCS1, false);
+		// pkC = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
+		// skC = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE, KeyBuilder.LENGTH_RSA_512, false);
+		// cipher = Cipher.getInstance(Cipher.ALG_RSA_PKCS1, false);
 		
-		pkT = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
+		// pkT = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
+		
+		// Generate key pair using the Bouncy Castle (BC) security provider		
+		byte[] input = new byte[] {(byte) 0xBE, (byte) 0xEF};
+		KeyPairGenerator kpg;
+		
+		SecureRandom random = new SecureRandom();
+		byte[] bytes = new byte[64]; // 512 bits
+		random.nextBytes(bytes);
+		
+		try {
+			Cipher cipher = Cipher.getInstance("RSA/NONE/NoPadding", "BC");
+			kpg = KeyPairGenerator.getInstance("RSA", "BC");
+
+			kpg.initialize(512, random);
+			
+			KeyPair kp = kpg.generateKeyPair();
+			Key pkC = kp.getPublic();
+			Key skC = kp.getPrivate();
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Report authentication failure
+			return;
+		} catch (NoSuchProviderException e) {
+			// TODO Report authentication failure
+			return;
+		} catch (NoSuchPaddingException e) {
+			// TODO Report authentication failure
+			return;
+		}
 		
 		// Set the state of the card to initialization to allow for key generation and uploading
 		state = STATE_INIT;
