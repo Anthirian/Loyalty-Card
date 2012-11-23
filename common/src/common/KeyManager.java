@@ -11,7 +11,15 @@ import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 
+/**
+ * 
+ * @author Geert Smelt
+ * @author Robin Oostrum
+ *
+ */
 public class KeyManager {
 	private String path;
 	public static final String PUBKEY_BASENAME = "pubkey_rsa.";
@@ -32,8 +40,11 @@ public class KeyManager {
 		String publicPath = path + PUBKEY_BASENAME + identifier;
 		String privatePath = path + PRIVKEY_BASENAME + identifier;
 		
+		//standard way of encoding public keys using X509EncodedKeySpec
 		X509EncodedKeySpec publicKeyEncoded = new X509EncodedKeySpec(
 				loadKey(publicPath));
+	
+		//standard way of encoding private keys using PKCS8EncodedKeySpec
 		PKCS8EncodedKeySpec privateKeyEncoded = new PKCS8EncodedKeySpec(
 				loadKey(privatePath));
 		
