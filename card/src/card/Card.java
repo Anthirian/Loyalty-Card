@@ -1,13 +1,16 @@
 package card;
 
-import java.security.InvalidKeyException;
-import java.security.Key;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.Security;
-import java.security.SecureRandom;
+import javacard.framework.JCSystem;
+import javacard.framework.Util;
+import javacard.security.AESKey;
+import javacard.security.CryptoException;
+import javacard.security.Key;
+import javacard.security.KeyBuilder;
+import javacard.security.RSAPrivateCrtKey;
+import javacard.security.RandomData;
+import javacard.security.RSAPublicKey;
+import javacardx.crypto.Cipher;
+import javacard.security.Signature;
 
 import javacard.framework.APDU;
 import javacard.framework.Applet;
@@ -48,63 +51,16 @@ public class Card extends Applet implements ISO7816 {
 	/** The applet state (INIT or ISSUED). */
 	byte state;
 	
-	/** Public Key of the Card. Used for encryption. */
-	private final Key pkC;
-	/** Secret Key of the Card. Used for decryption. */
-	private final Key skC;
-	/** Public Key of the Terminal. Used for encryption */
-	private final Key pkT;
-	/** Cipher for encryption and decryption. */
-	private final Cipher cipher;
-	
+	/** The current balance of the card, -1 if not set */
 	private short balance = -1;
-	SecureRandom random;
 	
 	public Card () {
 		
 		// Check if the card has already been initialized. If so, don't do it again
-		if (state == STATE_INIT) {			
-		
-			// Dit levert problemen op zonder import.
-			// Zodra je de Security import doet en de JDK 6 toevoegt aan build path is de packagenaam niet ok.
-			// Wel nodig omdat standaard crypto van Java niet genoeg is volgens website Erik
-			Security.addProvider(new BouncyCastleProvider());
-			
-			tmp = JCSystem.makeTransientByteArray((short) 256, JCSystem.CLEAR_ON_RESET);
-			// pkC = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
-			// skC = (RSAPrivateKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PRIVATE, KeyBuilder.LENGTH_RSA_512, false);
-			// cipher = Cipher.getInstance(Cipher.ALG_RSA_PKCS1, false);
-			
-			// pkT = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
-			
-			// Generate key pair using the Bouncy Castle (BC) security provider
-			KeyPairGenerator kpg;
-			
-			random = new SecureRandom();
-			byte[] bytes = new byte[64]; // 512 bits
-			random.nextBytes(bytes);
-			
-			try {
-				Cipher cipher = Cipher.getInstance("RSA/NONE/NoPadding", "BC");
-				kpg = KeyPairGenerator.getInstance("RSA", "BC");
-	
-				kpg.initialize(512, random);
-				
-				KeyPair kp = kpg.generateKeyPair();
-				Key pkC = kp.getPublic();
-				Key skC = kp.getPrivate();
-			} catch (NoSuchAlgorithmException e) {
-				// TODO Report authentication failure
-				return;
-			} catch (NoSuchProviderException e) {
-				// TODO Report authentication failure
-				return;
-			} catch (NoSuchPaddingException e) {
-				// TODO Report authentication failure
-				return;
-			}
-			
-			// Set the state of the card to initialization to allow for key generation and uploading
+		if (state == STATE_INIT) {
+			balance = 0;
+		// Set the state of the card to initialization to allow for key generation and uploading
+		} else {
 			state = STATE_INIT;
 		}
 	}
@@ -229,7 +185,7 @@ public class Card extends Applet implements ISO7816 {
 		ciphertext[1] = (byte)((data >> 8) & 0xff);
 		
 		// Decrypt the ciphertext
-		byte[] plaintext = decrypt(ciphertext, skC);
+		byte[] plaintext = decrypt(ciphertext, null);
 		
 		// TODO decide what to do with the data after decryption
 		
@@ -261,7 +217,7 @@ public class Card extends Applet implements ISO7816 {
 		
 		
 		// Encrypt this challenge
-		byte[] ciphertext = encrypt(challenge, pkT);
+		byte[] ciphertext = encrypt(challenge, null);
 		
 		// Send the challenge (no idea if this is correct)
 		short respSize = apdu.setOutgoing();
@@ -271,23 +227,11 @@ public class Card extends Applet implements ISO7816 {
 	
 	private byte[] encrypt(byte[] plaintext, Key key)  {
 		byte[] ciphertext = null;
-		try {
-			cipher.init(Cipher.ENCRYPT_MODE, key, random);
-			ciphertext = cipher.doFinal(plaintext);
-		} catch (InvalidKeyException e) {} 
-		catch (IllegalBlockSizeException e) {}
-		catch (BadPaddingException e) {}
 		return ciphertext;
 	}
 	
 	private byte[] decrypt(byte[] ciphertext, Key key) {
 		byte[] plaintext = null;
-		try {
-			cipher.init(Cipher.DECRYPT_MODE, key);
-			plaintext = cipher.doFinal(ciphertext);
-		} catch (InvalidKeyException e1) {}
-		catch (IllegalBlockSizeException e) {} 
-		catch (BadPaddingException e) {}
 		return plaintext;
 	}
 	
