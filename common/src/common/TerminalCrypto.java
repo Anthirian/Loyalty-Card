@@ -1,5 +1,27 @@
 package common;
 
+import java.nio.ByteBuffer;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.Signature;
+import java.security.SignatureException;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.util.Arrays;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+
 public class TerminalCrypto {
 
 	private Cipher RSACipher;
@@ -23,4 +45,225 @@ public class TerminalCrypto {
 			// e.printStackTrace();
 		}
 	}
+	
+	public byte[] encrypt(byte[] data, RSAPublicKey pubKey) {
+		SecretKey skey = AESKeyGen.generateKey();
+		byte[] AESKey = skey.getEncoded();
+		// encrypt the data array
+		data = encryptAES(data, AESKey);
+		// encrypt the key
+		byte[] encryptedAESKey = encryptRSA(AESKey, pubKey);
+		// append the 128 byte RSA encrypted AES key to the end of the cipher
+		// text
+		data = Arrays.copyOf(data, data.length + 128);
+		System.arraycopy(encryptedAESKey, 0, data, data.length - 128, 128);
+		return data;
+	}
+	
+	public byte[] decrypt(byte[] data, RSAPrivateKey privKey) {
+		// extract the 128 byte RSA encrypted AES key from the end of the cipher
+		// text
+		byte[] encryptedAESKey = Arrays.copyOfRange(data, data.length - 128,
+				data.length);
+		data = Arrays.copyOfRange(data, 0, data.length - 128);
+		// decrypt the key
+		byte[] AESKey = decryptRSA(encryptedAESKey, privKey);
+		// decrypt the data using AES
+		data = decryptAES(data, AESKey);
+		return data;
+	}
+	
+	public byte[] sign(byte[] data, RSAPrivateKey privKey) {
+		try {
+			RSASign.initSign(privKey);
+			RSASign.update(data);
+			byte[] signature = RSASign.sign();
+			if (signature.length != CONSTANTS.RSA_SIGNATURE_LENGTH) {
+				System.err
+						.println("Signature of the car certificate is of incorrect size. Aborting.");
+				return null;
+			}
+			// append the signature to the end of the data array
+			data = Arrays.copyOf(data, data.length
+					+ CONSTANTS.RSA_SIGNATURE_LENGTH);
+			System.arraycopy(signature, 0, data, data.length
+					- CONSTANTS.RSA_SIGNATURE_LENGTH,
+					CONSTANTS.RSA_SIGNATURE_LENGTH);
+			return data;
+		} catch (IllegalArgumentException e) {
+			// e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			// e.printStackTrace();
+		} catch (SignatureException e) {
+			// e.printStackTrace();
+		}
+		return null;
+	}
+	
+	public byte[] verify(byte[] data, RSAPublicKey pubKey)
+			throws SignatureException {
+		try {
+			// extract the 128 byte signature from the byte array of data
+			byte[] signature = Arrays.copyOfRange(data, data.length - 128,
+					data.length);
+			data = Arrays.copyOfRange(data, 0, data.length - 128);
+			// validate the signature
+			RSASign.initVerify(pubKey);
+			RSASign.update(data);
+			if (RSASign.verify(signature)) {
+				return data;
+			}
+		} catch (IllegalArgumentException e) {
+			// e.printStackTrace();
+		} catch (SignatureException e) {
+			// e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			// e.printStackTrace();
+		}
+		throw new SignatureException();
+	}
+	
+	public byte[] generateRandomNonce(int n) {
+		SecureRandom random = new SecureRandom();
+		byte[] nonce = new byte[n];
+		random.nextBytes(nonce);
+		return nonce;
+	}
+	
+	public byte[] encryptRSA(byte[] data, RSAPublicKey pubKey) {
+		try {
+			// perform rsa encryption
+			RSACipher.init(Cipher.ENCRYPT_MODE, pubKey);
+			return RSACipher.doFinal(data);
+			// cipherData is 128 bytes long and is appended to the data array
+		} catch (IllegalArgumentException e) {
+			// e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+			// e.printStackTrace();
+		} catch (BadPaddingException e) {
+			// e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			// e.printStackTrace();
+		}
+		return null;
+	}
+	
+	public byte[] decryptRSA(byte[] data, RSAPrivateKey privKey) {
+		try {
+			// perform rsa decryption
+			RSACipher.init(Cipher.DECRYPT_MODE, privKey);
+			return RSACipher.doFinal(data);
+		} catch (IllegalArgumentException e) {
+			// e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+			// e.printStackTrace();
+		} catch (BadPaddingException e) {
+			// e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			// e.printStackTrace();
+		}
+		return null;
+	}
+	
+	public byte[] decryptAES(byte[] data, byte[] AESKey) {
+		try {
+			SecretKeySpec AESKeySpec = new SecretKeySpec(AESKey, "AES");
+			// perform decryption
+			AESCipher.init(Cipher.DECRYPT_MODE, AESKeySpec, AESIvSpec);
+			data = AESCipher.doFinal(data);
+			return stripPaddingAES(data);
+		} catch (IllegalArgumentException e) {
+			// e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			// e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+			// e.printStackTrace();
+		} catch (BadPaddingException e) {
+			// e.printStackTrace();
+		} catch (InvalidAlgorithmParameterException e) {
+			// e.printStackTrace();
+		}
+		return null;
+	}
+	
+	public byte[] encryptAES(byte[] data, byte[] AESKey) {
+		try {
+			// pad data before encrypting with AES
+			data = padAES(data);
+			SecretKeySpec AESKeySpec = new SecretKeySpec(AESKey, "AES");
+			// perform encryption
+			AESCipher.init(Cipher.ENCRYPT_MODE, AESKeySpec, AESIvSpec);
+			return AESCipher.doFinal(data);
+		} catch (IllegalArgumentException e) {
+			// e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			// e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+			// e.printStackTrace();
+		} catch (BadPaddingException e) {
+			// e.printStackTrace();
+		} catch (InvalidAlgorithmParameterException e) {
+			// e.printStackTrace();
+		}
+		return null;
+	}
+
+	private byte[] padAES(byte[] data) {
+		int cipherLen = data.length + 2;
+		cipherLen += (16 - (cipherLen % 16));
+		byte[] newData = new byte[cipherLen];
+		System.arraycopy(Formatter.toByteArray((short) data.length), 0,
+				newData, 0, 2);
+		System.arraycopy(data, 0, newData, 2, data.length);
+		return newData;
+	}
+	
+	private byte[] stripPaddingAES(byte[] data) {
+		byte[] pad = Arrays.copyOfRange(data, 0, 2);
+		int padding = Formatter.byteArrayToShort(pad);
+		return Arrays.copyOfRange(data, 2, 2 + padding);
+	}
+	
+	private static void printHex(String msg, byte buf[]) {
+		StringBuffer strbuf = new StringBuffer(buf.length * 2);
+		for (int i = 0; i < buf.length; i++) {
+			if (((int) buf[i] & 0xff) < 0x10) {
+				strbuf.append("0");
+			}
+			strbuf.append(Long.toString((int) buf[i] & 0xff, 16));
+		}
+		System.out.println(msg + ": " + strbuf.toString());
+	}
+	
+	// testing encryption, signing, verification and decryption
+	public static void main(String[] arg) {
+		try {
+			// generate keys
+			KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+			generator.initialize(1024);
+			KeyPair keypair = generator.generateKeyPair();
+			RSAPublicKey pubKey = (RSAPublicKey) keypair.getPublic();
+			RSAPrivateKey privKey = (RSAPrivateKey) keypair.getPrivate();
+			// perform encryption en decryption
+			TerminalCrypto pk = new TerminalCrypto();
+			byte[] data = new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+					12, 13, 14, 15, 16 };
+			printHex("Cleartext", data);
+			data = pk.encrypt(data, pubKey);
+			//printHex("After encryption", data);
+			data = pk.sign(data, privKey);
+			//printHex("After signing", data);
+			try {
+				data = pk.verify(data, pubKey);
+			} catch (SignatureException e) {
+				e.printStackTrace();
+			}
+			//printHex("After verify", data);
+			data = pk.decrypt(data, privKey);
+			printHex("After decryption", data);
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
+	}
+
 }

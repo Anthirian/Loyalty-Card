@@ -24,11 +24,11 @@ public class CONSTANTS {
 
 	/* Car return APDUs */
 	public static final byte INS_RETURN_CAR = (byte) 0x0A;
-	public static final byte INS_GET_MILEAGE = (byte) 0x0C;
+	public static final byte INS_GET_CREDITS = (byte) 0x0C;
 
 	/* Car driving APDUs */
 	public static final byte INS_SET_TEAR = (byte) 0x0D;
-	public static final byte INS_WRITE_MILEAGE = (byte) 0x0E;
+	public static final byte INS_WRITE_CREDITS = (byte) 0x0E;
 
 	/* Couldn't get the ISO standard APDU to work, so put this in. */
 	public static final byte INS_GET_RESPONSE = (byte) 0x0F;
@@ -80,8 +80,8 @@ public class CONSTANTS {
 	public static final byte SW2_WRONG_INS = (byte) 0x15;
 	public static final byte SW2_READ_TOO_SHORT = (byte) 0x16;
 
-	/* Writing mileage data issues */
-	public static final byte SW2_MILEAGE_WRONG_LENGTH = (byte) 0xE0;
+	/* Writing credits data issues */
+	public static final byte SW2_CREDITS_WRONG_LENGTH = (byte) 0xE0;
 
 	/* Security related issues */
 	public static final byte SW2_AUTH_OTHER_ERROR = (byte) 0xA0;
@@ -131,7 +131,7 @@ public class CONSTANTS {
 	public static final short ID_LENGTH = (short) 4;
 	public static final short SEQ_LENGTH = (short) 4;
 	public static final short DATE_LENGTH = (short) 4;
-	public static final short MILEAGE_LENGTH = (short) 4;
+	public static final short CREDITS_LENGTH = (short) 4;
 
 	// Only when using RSA 1024 bit and AES 128 bit, obviously.
 	public static final short AES_IV_LENGTH = (short) 16;
@@ -199,8 +199,8 @@ public class CONSTANTS {
 	public static final short AUTH_MSG_3_OFFSET_CERT = (short) (AUTH_MSG_3_OFFSET_NB + NONCE_LENGTH);
 	public static final short AUTH_MSG_3_LENGTH = (short) (AUTH_MSG_3_OFFSET_CERT + CERT_LENGTH);
 
-	public static final short MILEAGE_MSG_OFFSET_VAL = (short) 0;
-	public static final short MILEAGE_MSG_OFFSET_SIG = (short) (MILEAGE_MSG_OFFSET_VAL + MILEAGE_LENGTH);
-	public static final short MILEAGE_MSG_LENGTH = (short) (MILEAGE_MSG_OFFSET_SIG + RSA_SIGNATURE_LENGTH);
+	public static final short CREDITS_MSG_OFFSET_VAL = (short) 0;
+	public static final short CREDITS_MSG_OFFSET_SIG = (short) (CREDITS_MSG_OFFSET_VAL + CREDITS_LENGTH);
+	public static final short CREDITS_MSG_LENGTH = (short) (CREDITS_MSG_OFFSET_SIG + RSA_SIGNATURE_LENGTH);
 
 }
