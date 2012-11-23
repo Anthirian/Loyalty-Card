@@ -1,23 +1,11 @@
 package card;
 
-import javacard.framework.JCSystem;
-import javacard.framework.Util;
-import javacard.security.AESKey;
-import javacard.security.CryptoException;
-import javacard.security.Key;
-import javacard.security.KeyBuilder;
-import javacard.security.RSAPrivateCrtKey;
-import javacard.security.RandomData;
-import javacard.security.RSAPublicKey;
-import javacardx.crypto.Cipher;
-import javacard.security.Signature;
-
 import javacard.framework.APDU;
 import javacard.framework.Applet;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
-import javacard.framework.JCSystem;
 import javacard.framework.Util;
+import javacard.security.Key;
 
 /**
  * Java Card applet to be used for the Loyalty Card system
@@ -51,14 +39,13 @@ public class Card extends Applet implements ISO7816 {
 	/** The applet state (INIT or ISSUED). */
 	byte state;
 	
-	/** The current balance of the card, -1 if not set */
-	private short balance = -1;
+	Crypto crypto;
 	
 	public Card () {
 		
 		// Check if the card has already been initialized. If so, don't do it again
 		if (state == STATE_INIT) {
-			balance = 0;
+			crypto = new Crypto(this);
 		// Set the state of the card to initialization to allow for key generation and uploading
 		} else {
 			state = STATE_INIT;
@@ -178,14 +165,7 @@ public class Card extends Applet implements ISO7816 {
 		// Process the data
 		short data = apdu.setIncomingAndReceive();
 		short le = -1;
-		byte[] ciphertext = new byte[2];
-		
-		// Convert the data from short to a two-byte array
-		ciphertext[0] = (byte)(data & 0xff);
-		ciphertext[1] = (byte)((data >> 8) & 0xff);
-		
-		// Decrypt the ciphertext
-		byte[] plaintext = decrypt(ciphertext, null);
+
 		
 		// TODO decide what to do with the data after decryption
 		
@@ -199,7 +179,7 @@ public class Card extends Applet implements ISO7816 {
             ISOException.throwIt((short) (SW_WRONG_LENGTH | 5));
         }
         
-        apdu.setOutgoingLength(le);		
+        apdu.setOutgoingLength(le);
 	}
 
 	/**
@@ -209,17 +189,12 @@ public class Card extends Applet implements ISO7816 {
 	 */
 	private void handshake(APDU apdu) {
 		// TODO Implement mutual authentication algorithm using RSA
-		//First create your name and a nonce
-		byte[] name = {(byte) 0x00}; // Use the AID as name? Should be unique.
-		byte[] nonce = {(byte) 0x00};
-		byte[] challenge = {};
-		// TODO Append these into a single challenge
 		
+		byte[] challenge;
 		
 		// Encrypt this challenge
-		byte[] ciphertext = encrypt(challenge, null);
+		short ciphertext = crypto.pubEncrypt(challenge);
 		
-		// Send the challenge (no idea if this is correct)
 		short respSize = apdu.setOutgoing();
 		apdu.setOutgoingLength(respSize);
 		apdu.sendBytesLong(ciphertext, (short) 0, respSize);
@@ -238,21 +213,21 @@ public class Card extends Applet implements ISO7816 {
 	private short add(APDU apdu) {
 		// TODO Add credits to the current balance
 		handleAPDU(apdu);
-		short balance = 0;
+		balance = balance ;
 		return balance;
 	}
 	
 	private short spend(APDU apdu) {
 		// TODO Subtract credits from the current balance, if sufficient
 		handleAPDU(apdu);
-		short balance = 0;
+		short price = 0;
+		balance = (short) (balance - price);
 		return balance;
 	}
 	
 	private short check(APDU apdu) {
 		// TODO Report the current balance of the card
 		handleAPDU(apdu);
-		short balance = 0;
 		return balance;
 	}
 }
