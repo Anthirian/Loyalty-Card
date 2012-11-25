@@ -62,7 +62,7 @@ public class CONSTANTS {
 	public static final byte SW1_WRONG_PARAMETERS_00 = (byte) 0x6A;
 	public static final byte SW1_WRONG_PARAMETERS = (byte) 0x6B;
 	public static final byte SW1_WRONG_LE_FIELD_00 = (byte) 0x6C;
-	public static final byte SW1_INS_NOT_SUPPORTED = (byte) 0x6d;
+	public static final byte SW1_INS_NOT_SUPPORTED = (byte) 0x6D;
 	public static final byte SW1_CLASS_NOT_SUPPORTED = (byte) 0x6E;
 	public static final byte SW1_NO_PRECISE_DIAGNOSIS = (byte) 0x6F;
 
@@ -82,6 +82,9 @@ public class CONSTANTS {
 
 	/* Writing credits data issues */
 	public static final byte SW2_CREDITS_WRONG_LENGTH = (byte) 0xE0;
+	public static final byte SW2_CREDITS_INSUFFICIENT = (byte) 0xE1;
+	// Not sure if needed:
+	// public static final byte SW2_CREDITS_NEGATIVE_ADDITION = (byte) 0xE2;
 
 	/* Security related issues */
 	public static final byte SW2_AUTH_OTHER_ERROR = (byte) 0xA0;

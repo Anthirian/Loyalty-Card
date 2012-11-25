@@ -1,5 +1,6 @@
 package card;
 
+import javacard.framework.CardRuntimeException;
 import javacard.framework.JCSystem;
 import javacard.framework.Util;
 import javacard.security.AESKey;
@@ -96,9 +97,36 @@ public final class Crypto {
 		return 0;
 	}
 
-	byte[] symEncrypt(byte[] plaintext) {
-		byte[] ciphertext;
-		return ciphertext;
+	/**
+	 * Symmetrically encrypts a plaintext into a ciphertext using a preconfigured AES key.
+	 * 
+	 * @param plaintext
+	 *            source buffer for the plaintext
+	 * @param ptOff
+	 *            offset of the plaintext in the source buffer
+	 * @param ptLen
+	 *            length of the plaintext in the source buffer
+	 * @param ciphertext
+	 *            target buffer for the ciphertext
+	 * @param ctOff
+	 *            offset for the ciphertext in the target buffer
+	 * @return length of the ciphertext in the buffer
+	 */
+	short symEncrypt(byte[] plaintext, short ptOff, short ptLen, byte[] ciphertext, short ctOff) {
+		if (!c.isAuthenticated()) {
+			Card.throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_NO_AUTH_PERFORMED);
+			return 0;
+		}
+		
+		// More checks needed
+
+		short length = 0;
+		try {
+			// Do the actual encryption here
+		} catch (Exception e) {
+			// Catch a meaningful exception, not just any.
+		}
+		return length;
 	}
 
 	byte[] symDecrypt(byte[] ciphertext) {
@@ -118,14 +146,33 @@ public final class Crypto {
 
 	/**
 	 * Spend an amount of credits at a terminal.
-	 * @param amount The amount of credits (>= 0) required for the purchase.
+	 * 
+	 * @param amount
+	 *            The amount of credits (>= 0) required for the purchase.
 	 * @return The new balance on the card.
 	 */
 	short spend(short amount) {
 		if (amount >= 0 && balance >= amount) {
 			balance -= amount;
-		} 
-		
+		} else {
+			Card.throwException(CONSTANTS.SW1_WRONG_PARAMETERS, CONSTANTS.SW2_CREDITS_INSUFFICIENT);
+		}
+
+		return balance;
+	}
+
+	/**
+	 * Gain an amount of credits from shopping for groceries.
+	 * 
+	 * @param amount
+	 * @return a <code>short</code> containing the new balance after increase. The short should make ensure only positive values.
+	 */
+	short gain(short amount) {
+		if (amount >= 0) {
+			balance += amount;
+		} else {
+			// Throw exception with appropriate SW
+		}
 		return balance;
 	}
 }
