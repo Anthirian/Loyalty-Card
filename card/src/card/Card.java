@@ -65,8 +65,6 @@ public class Card extends Applet implements ISO7816 {
 			return;
 		}
 
-		short le = -1;
-
 		byte[] buf = apdu.getBuffer();
 
 		byte cla = buf[ISO7816.OFFSET_CLA];
@@ -78,11 +76,10 @@ public class Card extends Applet implements ISO7816 {
 		handleInstruction(apdu, ins);
 
 		byte[] some_buffer_to_store_the_data = { (byte) 0xFF, (byte) 0xFF };
-		extractData(apdu, some_buffer_to_store_the_data);
+		read(apdu, some_buffer_to_store_the_data);
 
 		// Prepare reponse
 		Util.setShort(buf, (short) 1, (short) 0);
-		Util.setShort(buf, (short) 3, value);
 
 		// sendEncrypted();
 	}
@@ -142,13 +139,37 @@ public class Card extends Applet implements ISO7816 {
 		return true;
 	}
 
-	short extractData(APDU apdu, byte[] data) {
+	/**
+	 * Reads the APDU data into data. data will be cleared.
+	 * 
+	 * @param apdu
+	 *            the APDU to extract the data field from.
+	 * @param data
+	 *            the data that was extracted from the APDU's data field.
+	 * @return the number of bytes that were read from the APDU.
+	 */
+	short read(APDU apdu, byte[] data) {
 		byte[] buffer = apdu.getBuffer();
 
-		byte cla = buffer[ISO7816.OFFSET_CLA];
-		byte ins = buffer[ISO7816.OFFSET_INS];
+		short offset = 0;
+		short readCount = apdu.setIncomingAndReceive();
+		if (readCount > data.length) {
+			memoryFull(data);
+			return 0;
+		}
+		Util.arrayCopyNonAtomic(buffer, ISO7816.OFFSET_CDATA, data, offset, readCount);
+		offset += readCount;
 
-		return (short) 0;
+		while (apdu.getCurrentState() == APDU.STATE_PARTIAL_INCOMING) {
+			readCount = apdu.receiveBytes(ISO7816.OFFSET_CDATA);
+			if (offset + readCount > data.length) {
+				memoryFull(data);
+				return 0;
+			}
+			Util.arrayCopyNonAtomic(buffer, ISO7816.OFFSET_CDATA, data, offset, readCount);
+			offset += readCount;
+		}
+		return offset;
 	}
 
 	/**
@@ -176,8 +197,13 @@ public class Card extends Applet implements ISO7816 {
 		return;
 	}
 
+	/**
+	 * Checks the status of the session, i.e. wheter the handshake has been successfully completed.
+	 * 
+	 * @return <code>true</code> if <code>this</code> card has an active session.<br />
+	 *         <code>false</code> if <code>this</code> has not completed the handshake.
+	 */
 	boolean isAuthenticated() {
-		// TODO Auto-generated method stub
 		return true;
 	}
 
@@ -191,12 +217,12 @@ public class Card extends Applet implements ISO7816 {
 	private void handshake(APDU apdu) {
 		// TODO Implement mutual authentication algorithm using RSA
 
-		byte[] challenge;
+		byte[] challenge = {(byte) 0xFF}; // empty
 
 		// Encrypt this challenge
 		byte[] ciphertext = crypto.pubEncrypt(challenge);
 
-		sendEncrypted();
+		// send it
 	}
 
 	private byte[] encrypt(byte[] plaintext, Key key) {
@@ -210,28 +236,58 @@ public class Card extends Applet implements ISO7816 {
 	}
 
 	private short add(APDU apdu) {
-		// TODO Add credits to the current balance
-		extractData(apdu);
+		// read(apdu, tmp);
 		try {
 			crypto.gain((short) 0);
-		} catch (NegativeArgumentException e) {
-
+		} catch (ISOException ie) {
+			// TODO What to do with the exception once caught?
 		}
-		return balance;
+		return crypto.getBalance();
 	}
 
 	private short spend(APDU apdu) {
-		// TODO Subtract credits from the current balance, if sufficient
-		extractData(apdu);
-		short price = 0;
-		balance = (short) (balance - price);
-		return balance;
+		// read(apdu, tmp);
+		try {
+			crypto.spend((short) 0);
+		} catch (ISOException ie) {
+			// TODO What to do with the exception once caught?
+		}
+		return crypto.getBalance();
 	}
 
+	/**
+	 * Check the current balance of the card.
+	 * 
+	 * @param
+	 * @return the current balance.
+	 */
 	private short check(APDU apdu) {
-		// TODO Report the current balance of the card
-		extractData(apdu);
-		return balance;
+		// read(apdu, tmp);
+		// TODO Make sure the user is authenticated?
+		return crypto.getBalance();
+	}
+
+	/**
+	 * Handles the situation where the buffer is full.
+	 * 
+	 * @param buf
+	 *            the array that is full and will be cleared.
+	 * @throws ISOException
+	 *             when the <code>buf</code> is full.
+	 */
+	private void memoryFull(byte[] buf) {
+		throwException(ISO7816.SW_FILE_FULL);
+		clear(buf);
+	}
+
+	/**
+	 * Clears the input array, non-atomically writing zeroes from indexes 0 through length - 1.
+	 * 
+	 * @param buf
+	 *            Array to be cleared.
+	 */
+	private void clear(byte[] buf) {
+		Util.arrayFillNonAtomic(buf, (short) 0, (short) buf.length, (byte) 0);
 	}
 
 	public static final void throwException(byte b1, byte b2) {

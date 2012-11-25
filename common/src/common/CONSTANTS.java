@@ -83,8 +83,7 @@ public class CONSTANTS {
 	/* Writing credits data issues */
 	public static final byte SW2_CREDITS_WRONG_LENGTH = (byte) 0xE0;
 	public static final byte SW2_CREDITS_INSUFFICIENT = (byte) 0xE1;
-	// Not sure if needed:
-	// public static final byte SW2_CREDITS_NEGATIVE_ADDITION = (byte) 0xE2;
+	public static final byte SW2_CREDITS_NEGATIVE = (byte) 0xE2;
 
 	/* Security related issues */
 	public static final byte SW2_AUTH_OTHER_ERROR = (byte) 0xA0;
@@ -205,5 +204,4 @@ public class CONSTANTS {
 	public static final short CREDITS_MSG_OFFSET_VAL = (short) 0;
 	public static final short CREDITS_MSG_OFFSET_SIG = (short) (CREDITS_MSG_OFFSET_VAL + CREDITS_LENGTH);
 	public static final short CREDITS_MSG_LENGTH = (short) (CREDITS_MSG_OFFSET_SIG + RSA_SIGNATURE_LENGTH);
-
 }

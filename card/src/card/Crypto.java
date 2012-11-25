@@ -45,6 +45,7 @@ public final class Crypto {
 	private byte[] cert;
 	private byte[] carID;
 
+	/** The balance of the loyalty card. A <code>short</code> because we assume a maximum of 25000 pts, which is < 2^15 - 1 */
 	private short balance;
 
 	/** The applet as uploaded onto the card */
@@ -58,8 +59,8 @@ public final class Crypto {
 	 */
 	public Crypto(Card card) {
 		pubKeyCompany = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_1024, false);
-		pubKeyCompany.setExponent(CompanyRSAPublicKey.getExponent(), (short) 0, (short) CompanyRSAPublicKey.getExponent().length);
-		pubKeyCompany.setModulus(CompanyRSAPublicKey.getModulus(), (short) 0, (short) CompanyRSAPublicKey.getModulus().length);
+		pubKeyCompany.setExponent(SupermarketRSAKey.getExponent(), (short) 0, (short) SupermarketRSAKey.getExponent().length);
+		pubKeyCompany.setModulus(SupermarketRSAKey.getModulus(), (short) 0, (short) SupermarketRSAKey.getModulus().length);
 
 		pubKeyCar = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_1024, false);
 
@@ -83,8 +84,9 @@ public final class Crypto {
 
 		cert = new byte[CONSTANTS.CERT_LENGTH];
 		carID = new byte[CONSTANTS.ID_LENGTH];
-
-		balance = new byte[CONSTANTS.MILEAGE_MSG_LENGTH];
+		
+		// TODO change this to a short if we don't allow balance higher than 32000ish 
+		balance = (short) 0;
 
 		c = card;
 	}
@@ -111,13 +113,15 @@ public final class Crypto {
 	 * @param ctOff
 	 *            offset for the ciphertext in the target buffer
 	 * @return length of the ciphertext in the buffer
+	 * @throws ISOException
+	 *             when the card is not authenticated yet.
 	 */
 	short symEncrypt(byte[] plaintext, short ptOff, short ptLen, byte[] ciphertext, short ctOff) {
 		if (!c.isAuthenticated()) {
 			Card.throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_NO_AUTH_PERFORMED);
 			return 0;
 		}
-		
+
 		// More checks needed
 
 		short length = 0;
@@ -150,6 +154,8 @@ public final class Crypto {
 	 * @param amount
 	 *            The amount of credits (>= 0) required for the purchase.
 	 * @return The new balance on the card.
+	 * @throws ISOException
+	 *             when the current balance is less than the amount that is being spent.
 	 */
 	short spend(short amount) {
 		if (amount >= 0 && balance >= amount) {
@@ -166,13 +172,24 @@ public final class Crypto {
 	 * 
 	 * @param amount
 	 * @return a <code>short</code> containing the new balance after increase. The short should make ensure only positive values.
+	 * @throws ISOException
+	 *             when <code>amount</code> is negative.
 	 */
 	short gain(short amount) {
 		if (amount >= 0) {
 			balance += amount;
 		} else {
-			// Throw exception with appropriate SW
+			Card.throwException(CONSTANTS.SW1_WRONG_PARAMETERS, CONSTANTS.SW2_CREDITS_NEGATIVE);
 		}
+		return balance;
+	}
+
+	/**
+	 * Returns the current balance of the applet. Assumes the user is currently authenticated. TODO Definitely cryptographically unsafe!
+	 * 
+	 * @return the current balance.
+	 */
+	short getBalance() {
 		return balance;
 	}
 }
