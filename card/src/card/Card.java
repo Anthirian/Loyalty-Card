@@ -222,7 +222,7 @@ public class Card extends Applet implements ISO7816 {
 	 *         <code>false</code> if <code>this</code> has not completed the handshake.
 	 */
 	boolean isAuthenticated() {
-		return true;
+		return crypto.getAuthStatus();
 	}
 
 	/**
@@ -238,7 +238,8 @@ public class Card extends Applet implements ISO7816 {
 		byte[] challenge = { (byte) 0xFF }; // empty
 
 		// Encrypt this challenge
-		sendRSAEncrypted(key, challenge, challenge.length, apdu);
+		Key k = crypto.getCompanyKey();
+		sendRSAEncrypted(k, challenge, (short) challenge.length, apdu);
 
 		// send it
 	}

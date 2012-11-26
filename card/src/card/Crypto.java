@@ -36,11 +36,12 @@ public final class Crypto {
 	private byte[] pubKeyCard;
 	private RSAPrivateCrtKey privKeyCard;
 
+	/** The public key of the supermarket */
 	private RSAPublicKey pubKeyCompany;
-
 	private RSAPublicKey pubKeyCar;
 
-	private byte[] authState;
+	/** The state of authentication of this card */
+	private short authState;
 
 	private byte[] cert;
 	private byte[] carID;
@@ -80,7 +81,7 @@ public final class Crypto {
 
 		random = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
 
-		authState = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
+		authState = 0;
 
 		cert = new byte[CONSTANTS.CERT_LENGTH];
 		carID = new byte[CONSTANTS.ID_LENGTH];
@@ -133,7 +134,7 @@ public final class Crypto {
 
 		short pad = (short) (16 - (ptLen % 16));
 		if (ptOff + ptLen + pad > plaintext.length) {
-			// reset?
+			reset();
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_SESSION_ENCRYPT_ERR);
 			return 0;
 		}
@@ -142,7 +143,7 @@ public final class Crypto {
 		ptLen = (short) (ptLen + pad);
 
 		if (ptLen % 16 != 0) {
-			// reset?
+			reset();
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_SESSION_ENCRYPT_ERR);
 			return 0;
 		}
@@ -157,11 +158,22 @@ public final class Crypto {
 		short length = 0;
 		try {
 			aesCipher.init(sessionKey, Cipher.MODE_ENCRYPT);
-			length = aesCipher.doFinal(cipherText, ctOff, dataLength, cipherText, cipherOffset);
+			length = aesCipher.doFinal(ciphertext, ctOff, ptLen, ciphertext, ctOff);
 		} catch (CryptoException ce) {
-			// Catch a meaningful exception, not just any.
+			reset();
 		}
 		return length;
+	}
+
+	private void reset() {
+		// TODO Reset the active session
+		/*
+		 * Things that have to be reset/cleared are:
+		 * 
+		 * all buffers
+		 * all keys (supermarket key is fixed, won't reset)
+		 * auth_status = false
+		 */
 	}
 
 	private void generateSessionKey() {
@@ -286,5 +298,23 @@ public final class Crypto {
 	 */
 	short getBalance() {
 		return balance;
+	}
+
+	
+	boolean getAuthStatus() {
+		return authState == 1;
+	}
+	
+	/**
+	 * Retrieves the supermarket's public key to use for encryption.
+	 * @return the supermarket's public key.
+	 */
+	Key getCompanyKey() {
+		if(pubKeyCompany.isInitialized()) {
+			return pubKeyCompany;
+		} else {
+			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_AUTH_PARTNER_KEY_NOT_INIT);
+			return null;
+		}
 	}
 }
