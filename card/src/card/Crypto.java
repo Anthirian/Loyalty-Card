@@ -84,7 +84,7 @@ public final class Crypto {
 
 		cert = new byte[CONSTANTS.CERT_LENGTH];
 		carID = new byte[CONSTANTS.ID_LENGTH];
-		
+
 		balance = (short) 0;
 
 		c = card;
@@ -99,7 +99,7 @@ public final class Crypto {
 	}
 
 	/**
-	 * Symmetrically encrypts a plaintext into a ciphertext using a preconfigured AES key.
+	 * Symmetrically encrypts a plaintext into a ciphertext using a preconfigured AES session key.
 	 * 
 	 * @param plaintext
 	 *            source buffer for the plaintext
@@ -121,38 +121,82 @@ public final class Crypto {
 			return 0;
 		}
 
-		// More checks needed
+		verifyBufferLength(plaintext, ptOff, ptLen);
+		verifyBufferLength(ciphertext, ctOff);
 
+		// Add padding to maintain block size of 16
+		Util.arrayCopyNonAtomic(plaintext, ptOff, ciphertext, (short) (ctOff + 2), ptLen);
+
+		ciphertext[0] = (byte) (ptLen >> 8 & 0xff);
+		ciphertext[1] = (byte) (ptLen & 0xff);
+		ptLen += 2;
+
+		short pad = (short) (16 - (ptLen % 16));
+		if (ptOff + ptLen + pad > plaintext.length) {
+			// reset?
+			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_SESSION_ENCRYPT_ERR);
+			return 0;
+		}
+
+		Util.arrayFillNonAtomic(ciphertext, (short) (ctOff + ptLen), pad, (byte) 0);
+		ptLen = (short) (ptLen + pad);
+
+		if (ptLen % 16 != 0) {
+			// reset?
+			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_SESSION_ENCRYPT_ERR);
+			return 0;
+		}
+		
+		
+		// Generate AES key
+		if (!sessionKey.isInitialized()) {
+			generateSessionKey();
+		}
+		
+		// Perform actual encryption 
 		short length = 0;
 		try {
-			// Do the actual encryption here
-		} catch (Exception e) {
+			aesCipher.init(sessionKey, Cipher.MODE_ENCRYPT);
+			length = aesCipher.doFinal(cipherText, ctOff, dataLength, cipherText, cipherOffset);
+		} catch (CryptoException ce) {
 			// Catch a meaningful exception, not just any.
 		}
 		return length;
 	}
 
+	private void generateSessionKey() {
+		// TODO generate AES session key with RNG or nonces, and padding
+		return;
+	}
+
 	void symDecrypt(byte[] ciphertext) {
-		byte[] plaintext = {(byte) 0xFF};
+		byte[] plaintext = { (byte) 0xFF };
 		return;
 	}
 
 	/**
 	 * Encrypts a plaintext using public key cryptography.
-	 * @param key 
-	 * @param plaintext the message to encrypt.
-	 * @param ptOff the offset for the message to encrypt.
-	 * @param ptLen the length of the message to encrypt.
-	 * @param ciphertext the target buffer for the encrypted message.
-	 * @param ctOff the offset for the ciphertext.
+	 * 
+	 * @param key
+	 *            the receiving party's public key.
+	 * @param plaintext
+	 *            the message to encrypt.
+	 * @param ptOff
+	 *            the offset for the message to encrypt.
+	 * @param ptLen
+	 *            the length of the message to encrypt.
+	 * @param ciphertext
+	 *            the target buffer for the encrypted message.
+	 * @param ctOff
+	 *            the offset for the ciphertext.
 	 * @return the number of bytes that were encrypted.
 	 */
 	short pubEncrypt(Key key, byte[] plaintext, short ptOff, short ptLen, byte[] ciphertext, short ctOff) {
-		assertBufferBoundaries(plaintext, ptOff, ptLen);
-		assertBufferBoundaries(ciphertext, ctOff);
-		
+		verifyBufferLength(plaintext, ptOff, ptLen);
+		verifyBufferLength(ciphertext, ctOff);
+
 		short numberOfBytes = 0;
-		
+
 		try {
 			rsaCipher.init(key, Cipher.MODE_ENCRYPT);
 			numberOfBytes = rsaCipher.doFinal(plaintext, ptOff, ptLen, ciphertext, ctOff);
@@ -165,33 +209,40 @@ public final class Crypto {
 	}
 
 	byte[] pubDecrypt(byte[] ciphertext) {
-		byte[] plaintext = {(byte) 0xFF};
+		byte[] plaintext = { (byte) 0xFF };
 		return plaintext;
 	}
-	
+
 	/**
 	 * Checks for possible buffer overflows and throws an exception in that case.
-	 * @param buf the buffer to check for overflows.
-	 * @param offset the offset of the buffer.
+	 * 
+	 * @param buf
+	 *            the buffer to check for overflows.
+	 * @param offset
+	 *            the offset of the buffer.
 	 */
-	private void assertBufferBoundaries(byte[] buf, short offset) {
+	private void verifyBufferLength(byte[] buf, short offset) {
 		if (offset < 0 || offset >= buf.length) {
 			Card.throwException(CONSTANTS.SW1_NO_PRECISE_DIAGNOSIS, CONSTANTS.SW2_INTERNAL_ERROR);
 		}
 	}
-	
+
 	/**
 	 * Checks for possible buffer overflows and throws an exception in that case.
-	 * @param buf the buffer to check for overflows.
-	 * @param offset the offset of the buffer.
-	 * @param length the length of the buffer.
+	 * 
+	 * @param buf
+	 *            the buffer to check for overflows.
+	 * @param offset
+	 *            the offset of the buffer.
+	 * @param length
+	 *            the length of the buffer.
 	 */
-	private void assertBufferBoundaries(byte[] buf, short offset, short length) {
+	private void verifyBufferLength(byte[] buf, short offset, short length) {
 		if (offset < 0 || length < 0 || offset + length >= buf.length) {
 			Card.throwException(CONSTANTS.SW1_NO_PRECISE_DIAGNOSIS, CONSTANTS.SW2_INTERNAL_ERROR);
 		}
 	}
-	
+
 	/**
 	 * Spend an amount of credits at a terminal.
 	 * 

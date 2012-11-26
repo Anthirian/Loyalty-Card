@@ -176,11 +176,11 @@ public class Card extends Applet implements ISO7816 {
 	 * @param apdu
 	 *            the APDU that invoked this response
 	 */
-	private void sendEncrypted(byte[] data, short length, APDU apdu) {
+	private void sendAESEncrypted(byte[] data, short length, APDU apdu) {
 		if (isAuthenticated()) {
 			length = crypto.symEncrypt(data, (short) 0, length, data, (short) 0);
 		}
-		if (length > CONSTANTS.APDU_SIZE_MAX || length <= 0) {
+		if (length > CONSTANTS.APDU_DATA_SIZE_MAX || length <= 0) {
 			throwException(ISO7816.SW_WRONG_LENGTH);
 			return;
 		}
@@ -191,12 +191,28 @@ public class Card extends Applet implements ISO7816 {
 		return;
 	}
 
-	private void sendRSAEncrypted(byte[] data, short length, APDU apdu) {
+	/**
+	 * Send a message encrypted with RSA 512.
+	 * @param key the receiving party's public key.
+	 * @param data the buffer that holds the message to be sent.
+	 * @param length the length of the message in the buffer.
+	 * @param apdu the APDU that invoked this response.
+	 */
+	private void sendRSAEncrypted(Key key, byte[] data, short length, APDU apdu) {
 		if (!isAuthenticated()) {
-			length = crypto.pubEncrypt(data, (short) 0, length, data, (short) 0);
+			length = crypto.pubEncrypt(key, data, (short) 0, length, data, (short) 0);
 		} else {
 			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_ALREADY_PERFORMED);
 		}
+		
+		if (length > CONSTANTS.APDU_DATA_SIZE_MAX || length <= 0) {
+			throwException(ISO7816.SW_WRONG_LENGTH);
+			return;
+		}
+		
+		apdu.setOutgoing();
+		apdu.setOutgoingLength(length);
+		apdu.sendBytesLong(data, (short) 0, length);
 	}
 
 	/**
@@ -222,7 +238,7 @@ public class Card extends Applet implements ISO7816 {
 		byte[] challenge = { (byte) 0xFF }; // empty
 
 		// Encrypt this challenge
-		byte[] ciphertext = crypto.pubEncrypt(challenge);
+		sendRSAEncrypted(key, challenge, challenge.length, apdu);
 
 		// send it
 	}
