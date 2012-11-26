@@ -28,23 +28,22 @@ public class Card extends Applet implements ISO7816 {
 	private static final byte INS_ADD_PTS = (byte) 0xA0;
 	private static final byte INS_SPEND_PTS = (byte) 0xB0;
 	private static final byte INS_CHECK_BAL = (byte) 0xC0;
-	/*
-	 * States of the card. If the card is in the initialization state, the crypto keys can be written. If the card has been issued, the keys can be used for
-	 * cryptography.
-	 */
+	
+	/** Initialization state. Allows for cryptography initialization */
 	private static final byte STATE_INIT = 0;
+	/** Issued state. The card is ready for use in a supermarket. */
 	private static final byte STATE_ISSUED = 1;
 
 	/** Temporary buffer in RAM. */
 	byte[] tmp;
 
-	/** The applet state (INIT or ISSUED). */
+	/** The applet state (<code>INIT</code> or <code>ISSUED</code>). */
 	byte state;
-
+	
+	/** The cryptograhy object. Handles all encryption and decryption and also stores the current balance of the card */
 	Crypto crypto;
 
 	public Card() {
-
 		// Check if the card has already been initialized. If so, don't do it again
 		if (state == STATE_INIT) {
 			crypto = new Crypto(this);
@@ -103,6 +102,9 @@ public class Card extends Applet implements ISO7816 {
 			case INS_SET_TERM_PUB_EXP:
 				// Set the terminal's public key
 				break;
+			case INS_ISSUE:
+				// The card is ready for general use.
+				state = STATE_INIT;
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
 			}
@@ -131,21 +133,13 @@ public class Card extends Applet implements ISO7816 {
 		}
 	}
 
-	public boolean select() {
-		/*
-		 * Upon selecting this applet we want the card to authenticate itself to the terminal and vice versa, but this should be done via a CommandAPDU other
-		 * than SELECT.
-		 */
-		return true;
-	}
-
 	/**
-	 * Reads the APDU data into data. data will be cleared.
+	 * Reads the APDU data into <code>data</code>. <code>data</code> will be cleared.
 	 * 
 	 * @param apdu
 	 *            the APDU to extract the data field from.
 	 * @param data
-	 *            the data that was extracted from the APDU's data field.
+	 *            target buffer for the data that will be extracted from the APDU's data field. Has to be sufficiently long. 
 	 * @return the number of bytes that were read from the APDU.
 	 */
 	short read(APDU apdu, byte[] data) {

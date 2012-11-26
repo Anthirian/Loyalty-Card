@@ -134,17 +134,17 @@ public final class Crypto {
 	}
 
 	byte[] symDecrypt(byte[] ciphertext) {
-		byte[] plaintext;
+		byte[] plaintext = {(byte) 0xFF};
 		return plaintext;
 	}
 
 	byte[] pubEncrypt(byte[] plaintext) {
-		byte[] ciphertext;
+		byte[] ciphertext = {(byte) 0xFF};
 		return ciphertext;
 	}
 
 	byte[] pubDecrypt(byte[] ciphertext) {
-		byte[] plaintext;
+		byte[] plaintext = {(byte) 0xFF};
 		return plaintext;
 	}
 
