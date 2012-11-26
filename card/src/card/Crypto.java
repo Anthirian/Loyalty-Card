@@ -85,7 +85,6 @@ public final class Crypto {
 		cert = new byte[CONSTANTS.CERT_LENGTH];
 		carID = new byte[CONSTANTS.ID_LENGTH];
 		
-		// TODO change this to a short if we don't allow balance higher than 32000ish 
 		balance = (short) 0;
 
 		c = card;
@@ -133,21 +132,66 @@ public final class Crypto {
 		return length;
 	}
 
-	byte[] symDecrypt(byte[] ciphertext) {
+	void symDecrypt(byte[] ciphertext) {
 		byte[] plaintext = {(byte) 0xFF};
-		return plaintext;
+		return;
 	}
 
-	byte[] pubEncrypt(byte[] plaintext) {
-		byte[] ciphertext = {(byte) 0xFF};
-		return ciphertext;
+	/**
+	 * Encrypts a plaintext using public key cryptography.
+	 * @param key 
+	 * @param plaintext the message to encrypt.
+	 * @param ptOff the offset for the message to encrypt.
+	 * @param ptLen the length of the message to encrypt.
+	 * @param ciphertext the target buffer for the encrypted message.
+	 * @param ctOff the offset for the ciphertext.
+	 * @return the number of bytes that were encrypted.
+	 */
+	short pubEncrypt(Key key, byte[] plaintext, short ptOff, short ptLen, byte[] ciphertext, short ctOff) {
+		assertBufferBoundaries(plaintext, ptOff, ptLen);
+		assertBufferBoundaries(ciphertext, ctOff);
+		
+		short numberOfBytes = 0;
+		
+		try {
+			rsaCipher.init(key, Cipher.MODE_ENCRYPT);
+			numberOfBytes = rsaCipher.doFinal(plaintext, ptOff, ptLen, ciphertext, ctOff);
+		} catch (CryptoException e) {
+			// TODO reset the authentication session?
+			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, (byte) e.getReason());
+			return 0;
+		}
+		return numberOfBytes;
 	}
 
 	byte[] pubDecrypt(byte[] ciphertext) {
 		byte[] plaintext = {(byte) 0xFF};
 		return plaintext;
 	}
-
+	
+	/**
+	 * Checks for possible buffer overflows and throws an exception in that case.
+	 * @param buf the buffer to check for overflows.
+	 * @param offset the offset of the buffer.
+	 */
+	private void assertBufferBoundaries(byte[] buf, short offset) {
+		if (offset < 0 || offset >= buf.length) {
+			Card.throwException(CONSTANTS.SW1_NO_PRECISE_DIAGNOSIS, CONSTANTS.SW2_INTERNAL_ERROR);
+		}
+	}
+	
+	/**
+	 * Checks for possible buffer overflows and throws an exception in that case.
+	 * @param buf the buffer to check for overflows.
+	 * @param offset the offset of the buffer.
+	 * @param length the length of the buffer.
+	 */
+	private void assertBufferBoundaries(byte[] buf, short offset, short length) {
+		if (offset < 0 || length < 0 || offset + length >= buf.length) {
+			Card.throwException(CONSTANTS.SW1_NO_PRECISE_DIAGNOSIS, CONSTANTS.SW2_INTERNAL_ERROR);
+		}
+	}
+	
 	/**
 	 * Spend an amount of credits at a terminal.
 	 * 

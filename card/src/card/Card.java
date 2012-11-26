@@ -28,7 +28,7 @@ public class Card extends Applet implements ISO7816 {
 	private static final byte INS_ADD_PTS = (byte) 0xA0;
 	private static final byte INS_SPEND_PTS = (byte) 0xB0;
 	private static final byte INS_CHECK_BAL = (byte) 0xC0;
-	
+
 	/** Initialization state. Allows for cryptography initialization */
 	private static final byte STATE_INIT = 0;
 	/** Issued state. The card is ready for use in a supermarket. */
@@ -39,7 +39,7 @@ public class Card extends Applet implements ISO7816 {
 
 	/** The applet state (<code>INIT</code> or <code>ISSUED</code>). */
 	byte state;
-	
+
 	/** The cryptograhy object. Handles all encryption and decryption and also stores the current balance of the card */
 	Crypto crypto;
 
@@ -139,7 +139,7 @@ public class Card extends Applet implements ISO7816 {
 	 * @param apdu
 	 *            the APDU to extract the data field from.
 	 * @param data
-	 *            target buffer for the data that will be extracted from the APDU's data field. Has to be sufficiently long. 
+	 *            target buffer for the data that will be extracted from the APDU's data field. Has to be sufficiently long.
 	 * @return the number of bytes that were read from the APDU.
 	 */
 	short read(APDU apdu, byte[] data) {
@@ -191,6 +191,14 @@ public class Card extends Applet implements ISO7816 {
 		return;
 	}
 
+	private void sendRSAEncrypted(byte[] data, short length, APDU apdu) {
+		if (!isAuthenticated()) {
+			length = crypto.pubEncrypt(data, (short) 0, length, data, (short) 0);
+		} else {
+			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_ALREADY_PERFORMED);
+		}
+	}
+
 	/**
 	 * Checks the status of the session, i.e. wheter the handshake has been successfully completed.
 	 * 
@@ -211,7 +219,7 @@ public class Card extends Applet implements ISO7816 {
 	private void handshake(APDU apdu) {
 		// TODO Implement mutual authentication algorithm using RSA
 
-		byte[] challenge = {(byte) 0xFF}; // empty
+		byte[] challenge = { (byte) 0xFF }; // empty
 
 		// Encrypt this challenge
 		byte[] ciphertext = crypto.pubEncrypt(challenge);
