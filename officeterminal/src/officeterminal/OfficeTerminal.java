@@ -26,6 +26,13 @@ import javax.smartcardio.CardChannel;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
+/**
+ * The office terminal is able to register new customers, personalize cards, delete
+ * customers and view customer info (name, card id's and balance).
+ * @author Robin Oostrum
+ * @author Geert Smelt
+ *
+ */
 public class OfficeTerminal {
 	static final int BLOCKSIZE = 128;
 
@@ -591,7 +598,6 @@ public class OfficeTerminal {
 				int client = Integer.parseInt(CLI.prompt("Please enter client's id: "));
 				if (client == -1)
 					continue mainmenu;
-
 				ot.personalizeCard(client);
 			} else if (Integer.parseInt(command) == 3) {
 				List<Customer> customers = ot.getCustomerIds();
@@ -613,7 +619,8 @@ public class OfficeTerminal {
 						System.err.println("Invalid customer");
 				}
 				System.out.println(chosen.getName() + ": Card ID = " + chosen.getCardID()
-						+ ", balance = " + chosen.getCredits());
+							+ ", balance = " + chosen.getCredits());
+				
 			} else if (Integer.parseInt(command) == 4) {
 				int cust = Integer.parseInt(CLI.prompt("Please enter customer's id: "));
 				if (cust == -1)
