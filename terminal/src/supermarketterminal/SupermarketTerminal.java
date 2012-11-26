@@ -1,4 +1,4 @@
-package terminal;
+package supermarketterminal;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -28,7 +28,7 @@ import common.TerminalCrypto;
  *
  */
 
-public class Terminal  {
+public class SupermarketTerminal  {
 
 	AppletCommunication com;
 	AppletSession session;
@@ -42,7 +42,7 @@ public class Terminal  {
 	int cardId;
 	int sequenceNr;
 	
-	public Terminal (int customerId) {
+	public SupermarketTerminal (int customerId) {
 		this.customerId = customerId;
 		System.out.println("Welcome customer no. " + customerId);
 		loadKeyFiles();
@@ -115,8 +115,10 @@ public class Terminal  {
 			System.err.println(e.getMessage());
 			return;
 		}
-		/*
+		
 		System.out.println("Card authenticated.");
+		
+		/*
 		// reset the credits when a new card is inserted
 		if (isNewSequence) {
 			System.out.println("Credits reset.");
@@ -159,6 +161,7 @@ public class Terminal  {
 		*/
 	}
 	
+	/*
 	private boolean validateCertificate(byte[] certificate) {
 		byte[] certificateData;
 
@@ -230,7 +233,8 @@ public class Terminal  {
 							+ this.sequenceNr);
 		}
 	}
-	
+	*/
+	/*
 	private void setCardTearFlag() {
 		if (!session.isAuthenticated()) {
 			throw new SecurityException(
@@ -245,6 +249,7 @@ public class Terminal  {
 		}
 		System.out.println("Card tear flag set.");
 	}
+	*/
 	
 	private void writeCredits(int credits) {
 		if (!session.isAuthenticated()) {
@@ -292,6 +297,6 @@ public class Terminal  {
 	
 	public static void main(String[] arg) {
 		// Change integer to x to represent another terminal with CustomerID x.
-		new Terminal(1);
+		new SupermarketTerminal(1);
 	}
 }
