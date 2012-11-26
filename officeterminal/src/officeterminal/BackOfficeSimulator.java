@@ -317,6 +317,26 @@ class BackOfficeSimulator implements BackOffice {
 		return list;
 	}
 
+	@Override
+	public void deleteCustomer(int customerID) {
+		Customer customer = customers.get(customerID);
+		if (customer == null) {
+			System.err.println("Cannot remove non-existing customer with id: "
+					+ customerID);
+			return;
+		}
+		
+		//deleteCard(customer.getCardID());
+		customers.remove(customerID);
+		--lastCustomerId;
+
+		try {
+			remoteSave();
+		} catch (BackOfficeException e) {
+			e.printStackTrace();
+		}
+	}
+
 	
 	/**
 	 * Write a new sequence number for given car ID.
