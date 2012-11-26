@@ -20,6 +20,8 @@ interface BackOffice {
 	IDKeyPair issueNewCard(Customer client) throws BackOfficeException;
 
 	void deleteCard(int cardID);
+	
+	void deleteCustomer(int customerID);
 
 	//int addNewCar(String name) throws BackOfficeException;
 

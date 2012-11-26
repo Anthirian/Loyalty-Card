@@ -52,6 +52,28 @@ public final class CLI {
 			}
 		}
 	}
+	
+	public static int checkInt(int input) {
+		while (true) {
+			String correct = "";
+			
+			//CLI.showln("ID is " + input + ".");
+			while (!correct.equals("N") && !correct.equals("Y")
+					&& !correct.equals("C")) {
+				correct = CLI.prompt("Is this correct? (Y)es/(N)o/(C)ancel: ");
+			}
+
+			if (correct.equals("C")) {
+				return -1;
+			} else if (correct.equals("Y")) {
+				try {
+					return input;
+				} catch (NumberFormatException e) {
+					CLI.showln("This is not a valid id number.");
+				}
+			}
+		}
+	}
 
 	public static void show(String message) {
 		System.out.print(message);

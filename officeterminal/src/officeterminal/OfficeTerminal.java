@@ -550,7 +550,8 @@ public class OfficeTerminal {
 			}
 
 			command = CLI
-					.prompt("\nPlease enter command.\n(1) Register new customer | (2) Personalize card | (3) View customer info | (9) Exit\n(?): ");
+					.prompt("\nPlease enter command.\n(1) Register new customer | (2) Personalize card |" +
+							" (3) View customer info | (4) Delete customer | (9) Exit\n(?): ");
 
 			if (Integer.parseInt(command) == 1) {
 				String name;
@@ -587,7 +588,7 @@ public class OfficeTerminal {
 						+ ", " + cust.getName() + ")");
 
 			} else if (Integer.parseInt(command) == 2) {
-				int client = CLI.promptInt("Please enter client's id: ");
+				int client = Integer.parseInt(CLI.prompt("Please enter client's id: "));
 				if (client == -1)
 					continue mainmenu;
 
@@ -599,7 +600,7 @@ public class OfficeTerminal {
 				}
 				Customer chosen = null;
 				while (chosen == null) {
-					int cust = CLI.promptInt("Please enter customer's id: ");
+					int cust = Integer.parseInt(CLI.prompt("Please enter customer's id: "));
 					if (cust == -1)
 						continue mainmenu;
 					for (Customer c : customers) {
@@ -613,7 +614,26 @@ public class OfficeTerminal {
 				}
 				System.out.println(chosen.getName() + ": Card ID = " + chosen.getCardID()
 						+ ", balance = " + chosen.getCredits());
-			}  else if (Integer.parseInt(command) == 9) {
+			} else if (Integer.parseInt(command) == 4) {
+				int cust = Integer.parseInt(CLI.prompt("Please enter customer's id: "));
+				if (cust == -1)
+					continue mainmenu;
+				try {
+					Customer c = ot.getCustomerByID(cust);
+					CLI.showln("Selected customer: " + c.getName());
+				} catch (BackOfficeException e) {
+					System.err.print("Invalid customer");
+				}
+				CLI.checkInt(cust);
+				try {
+					ot.deleteCustomer(cust);
+					CLI.showln("Removed Customer with ID = " + cust + " from database.");
+				}
+				catch (BackOfficeException e) {
+					System.err.println("Could not delete client.");
+					continue mainmenu;
+				}
+			} else if (Integer.parseInt(command) == 9) {
 				/* Exit program */
 				ot.save();
 				break;
@@ -621,6 +641,14 @@ public class OfficeTerminal {
 				System.err.println("Incorrect command entered.");
 			}
 		}
+	}
+
+	private Customer getCustomerByID(int cust) throws BackOfficeException {
+		return office.getCustomerByID(cust);
+	}
+
+	private void deleteCustomer(int customerID) throws BackOfficeException {
+		office.deleteCustomer(customerID);
 	}
 
 	private List<Customer> getCustomerIds() {
