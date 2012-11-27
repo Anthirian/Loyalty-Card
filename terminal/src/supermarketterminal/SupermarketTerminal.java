@@ -4,7 +4,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.security.interfaces.RSAPrivateKey;
@@ -13,47 +12,63 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
 import java.util.Date;
 
+import common.CLI;
+import common.KeyManager;
+import common.CONSTANTS;
 import common.AppletCommunication;
 import common.AppletSession;
-import common.CONSTANTS;
 import common.Formatter;
-import common.KeyManager;
 import common.Response;
 import common.TerminalCrypto;
 
-/**
- * The terminal class provides an interface for reading out the loyalty card system
- * @author Geert Smelt
- * @author Robin Oostrum
- *
- */
-
-public class SupermarketTerminal  {
-
+public class SupermarketTerminal {
+	
+	/** communication gateway */
 	AppletCommunication com;
+
+	/** communication session */
 	AppletSession session;
-	
+
+	/** Cryptographic functions */
 	TerminalCrypto crypto;
-	RSAPublicKey supermarketPublicKey;
+
+	/** Issuer public key */
+	RSAPublicKey overheadPublicKey;
+
+	/** Supermarket's private key */
 	RSAPrivateKey privKey;
+
+	/** keys directory */
 	String keyDir = "./keys/";
-	
-	int customerId;
+
+	/** Current card id */
 	int cardId;
-	int sequenceNr;
 	
-	public SupermarketTerminal (int customerId) {
-		this.customerId = customerId;
-		System.out.println("Welcome customer no. " + customerId);
+	/** Current supermarket id */
+	int supermarketId;
+	
+	public SupermarketTerminal (int supermarketId) {
+		this.supermarketId = supermarketId;
+		System.out.println("Welcome to supermarket " + supermarketId);
 		loadKeyFiles();
-		loadSequenceNumber();
+		
+		session = new AppletSession(overheadPublicKey, privKey, supermarketId);
+		com = new AppletCommunication(session);
+		crypto = new TerminalCrypto();
+		
+		while (true) {
+			main();
+			System.out.print("\nPress return when card has been inserted.");
+			waitForInput();
+			waitToTryAgain();
+		}
 	}
 	
 	private void loadKeyFiles() {
 		try {
-			String car = "Customer_" + this.customerId;
-			privKey = (RSAPrivateKey) KeyManager.loadKeyPair(car).getPrivate();
-			supermarketPublicKey = (RSAPublicKey) KeyManager.loadKeyPair("supermarket")
+			String supermarket = "Supermarket_" + this.supermarketId;
+			privKey = (RSAPrivateKey) KeyManager.loadKeyPair(supermarket).getPrivate();
+			overheadPublicKey = (RSAPublicKey) KeyManager.loadKeyPair("issuer")
 					.getPublic();
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
@@ -66,209 +81,23 @@ public class SupermarketTerminal  {
 		}
 	}
 	
-	private void loadSequenceNumber() {
-		try {
-			// load sequence number
-			FileInputStream carSeqFile = new FileInputStream("customerseq_"
-					+ customerId);
-			byte[] customerSeqBytes = new byte[CONSTANTS.SEQNR_BYTESIZE];
-			carSeqFile.read(customerSeqBytes, 0, 4);
-			sequenceNr = Formatter.byteArrayToInt(customerSeqBytes);
-			carSeqFile.close();
-		} catch (FileNotFoundException e) {
-			// generate new seqnum file
-			writeCustomerSequenceNr(1);
-			sequenceNr = 1;
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private void writeCustomerSequenceNr(int n) {
-		try {
-			FileOutputStream customerSeqFile = new FileOutputStream("customerseq_"
-					+ customerId);
-			customerSeqFile.write(Formatter.toByteArray(n));
-			customerSeqFile.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
 	private void main() {
 		// wait until a card is inserted
 		com.waitForCard();
 		// authenticate the card and the terminal
 		System.out.println("Authenticating card...");
-		if (!session.authenticate(CONSTANTS.P1_AUTHENTICATE_CAR)) {
+		if (!session.authenticate(CONSTANTS.P1_AUTHENTICATE_SUPERMARKET)) {
 			System.err.println("Authentication error.");
 			return;
 		}
-
 		cardId = session.getCardId();
-		byte[] certificate = session.getCertificate();
 		
-		boolean isNewSequence;
-		try {
-			isNewSequence = validateCertificate(certificate);
-		} catch (SecurityException e) {
-			System.err.println(e.getMessage());
-			return;
-		}
 		
-		System.out.println("Card authenticated.");
-		
-		/*
-		// reset the credits when a new card is inserted
-		if (isNewSequence) {
-			System.out.println("Credits reset.");
-			credits.resetCredits();
-		}
-
-		try {
-			writeCredits(credits.getCredits());
-		} catch (SecurityException e) {
-			System.err.println(e.getMessage());
-		}
-
-		// let the user start the engine
-		System.out.print("Press return to start the engine.");
-		waitForInput();
-		try {
-			setCardTearFlag();
-		} catch (SecurityException e) {
-			CLI.showln(e.getMessage());
-			return;
-		}
-		if (motor.isPaused()) {
-			motor.restart();
-		} else {
-			motor.start();
-		}
-		System.out
-				.println("Engine started, press return to stop the engine again.");
-		// let the user stop the engine
-		waitForInput();
-		motor.shutdown();
-		sleep(2);
-		System.out.println("Engine stopped.");
-		// write the mileage data
-		try {
-			writeMilage(motor.getMileage());
-		} catch (SecurityException e) {
-			System.err.println(e.getMessage());
-		}
-		*/
 	}
 	
-	/*
-	private boolean validateCertificate(byte[] certificate) {
-		byte[] certificateData;
-
-		try {
-			certificateData = crypto.verify(certificate, supermarketPublicKey);
-		} catch (SignatureException e) {
-			throw new SecurityException("Invalid certificate signature");
-		}
-
-		// extract the data
-		byte[] cardIdBytes = Arrays.copyOfRange(certificateData,
-				CONSTANTS.CERT_OFFSET_CARDID, CONSTANTS.CERT_OFFSET_CARDID
-						+ CONSTANTS.ID_LENGTH);
-		int receivedCardId = Formatter.byteArrayToInt(cardIdBytes);
-
-		byte[] customerIdBytes = Arrays.copyOfRange(certificateData,
-				CONSTANTS.CERT_OFFSET_CARID, CONSTANTS.CERT_OFFSET_CARID
-						+ CONSTANTS.ID_LENGTH);
-		int receivedCustomerId = Formatter.byteArrayToInt(customerIdBytes);
-
-		byte[] sequenceNumberBytes = Arrays.copyOfRange(certificateData,
-				CONSTANTS.CERT_OFFSET_SEQNUM, CONSTANTS.CERT_OFFSET_SEQNUM
-						+ CONSTANTS.SEQ_LENGTH);
-		int receivedSequenceNumber = Formatter
-				.byteArrayToInt(sequenceNumberBytes);
-
-		byte[] startDateBytes = Arrays.copyOfRange(certificateData,
-				CONSTANTS.SEQ_LENGTH, CONSTANTS.SEQ_LENGTH
-						+ CONSTANTS.DATE_LENGTH);
-		long startDate = Formatter.byteArrayToLong(startDateBytes);
-		byte[] endDateBytes = Arrays.copyOfRange(certificateData,
-				CONSTANTS.CERT_OFFSET_END, CONSTANTS.CERT_OFFSET_END
-						+ CONSTANTS.DATE_LENGTH);
-		long endDate = Formatter.byteArrayToLong(endDateBytes);
-
-		// check certificate date
-		Date date = new Date();
-		long currentDate = date.getTime() / 1000;
-		if (currentDate > endDate || currentDate < startDate) {
-			throw new SecurityException("Invalid certificate date (current: "
-					+ currentDate + ", start: " + startDate + ", end: "
-					+ endDate + ")");
-		}
-
-		// check the id's
-		if (receivedCardId != this.cardId) {
-			throw new SecurityException("Invalid card id in certificate: "
-					+ receivedCardId);
-		}
-		if (receivedCustomerId != this.customerId) {
-			throw new SecurityException("Invalid customer id in certificate: "
-					+ receivedCustomerId);
-		}
-
-		// check the sequence number
-		if (this.sequenceNr == receivedSequenceNumber) {
-			System.out.println("Sequence number: " + this.sequenceNr);
-			return false;
-		} else if ((this.sequenceNr + 1) == receivedSequenceNumber) {
-			this.sequenceNr = receivedSequenceNumber;
-			writeCustomerSequenceNr(receivedSequenceNumber);
-			System.out.println("Selected next sequence number: "
-					+ this.sequenceNr);
-			return true;
-		} else {
-			throw new SecurityException(
-					"Invalid sequence number in certificate: "
-							+ receivedSequenceNumber + " current customer sequence number: "
-							+ this.sequenceNr);
-		}
-	}
-	*/
-	/*
-	private void setCardTearFlag() {
-		if (!session.isAuthenticated()) {
-			throw new SecurityException(
-					"Cannot set tear flag, card not authenticated.");
-		}
-		Response resp = com.sendCommand(CONSTANTS.INS_SET_TEAR);
-		if (resp == null) {
-			throw new SecurityException("Cannot set tear, card removed.");
-		}
-		if (!resp.success()) {
-			throw new SecurityException("Error writing tear.");
-		}
-		System.out.println("Card tear flag set.");
-	}
-	*/
-	
-	private void writeCredits(int credits) {
-		if (!session.isAuthenticated()) {
-			throw new SecurityException(
-					"Cannot write credits, card not authenticated.");
-		}
-		byte[] creditsData = Formatter.toByteArray(credits);
-		creditsData = crypto.sign(creditsData, privKey);
-		Response resp = com.sendCommand(CONSTANTS.INS_WRITE_CREDITS,
-				creditsData);
-		if (resp == null) {
-			throw new SecurityException("Cannot write credits, card removed.");
-		}
-		if (!resp.success()) {
-			throw new SecurityException("Error writing credits.");
-		}
-		System.out.println("Credits written to card: " + credits);
-	}
-	
+	/**
+	 * Waits for the user to press any key
+	 */
 	private void waitForInput() {
 		try {
 			System.in.read();
@@ -276,7 +105,10 @@ public class SupermarketTerminal  {
 			e.printStackTrace();
 		}
 	}
-	
+
+	/**
+	 * Waits 5 seconds
+	 */
 	private void waitToTryAgain() {
 		sleep(1);
 		System.out.print("Try to authenticate card again in ");
@@ -286,17 +118,25 @@ public class SupermarketTerminal  {
 		}
 		System.out.println();
 	}
-	
+
+	/**
+	 * Sleep for x seconds
+	 */
 	private void sleep(int x) {
 		try {
 			Thread.sleep(1000 * x);
 		} catch (InterruptedException e) {
-			System.err.println("Session was interrupted");
+			System.err.println("Session interrupted!");
 		}
 	}
-	
+
+	/**
+	 * Start up the supermarket terminal
+	 * 
+	 * @param arg
+	 */
 	public static void main(String[] arg) {
-		// Change integer to x to represent another terminal with CustomerID x.
+		// Change integer to x to represent another supermarket with ID x
 		new SupermarketTerminal(1);
 	}
 }
