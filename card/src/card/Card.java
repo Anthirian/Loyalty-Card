@@ -6,6 +6,9 @@ import javacard.framework.APDU;
 import javacard.framework.Applet;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
+import javacard.framework.JCSystem;
+import javacard.framework.TransactionException;
+import javacard.framework.UserException;
 import javacard.framework.Util;
 import javacard.security.Key;
 
@@ -72,9 +75,13 @@ public class Card extends Applet implements ISO7816 {
 		byte p2 = buf[ISO7816.OFFSET_P2];
 		byte lc = buf[ISO7816.OFFSET_LC];
 
-		handleInstruction(apdu, ins);
-
-		byte[] some_buffer_to_store_the_data = { (byte) 0xFF, (byte) 0xFF };
+		try {
+			handleInstruction(apdu, ins);
+		} catch (UserException e) {
+			// TODO Auto-generated catch block
+		}
+		
+		byte[] some_buffer_to_store_the_data = { (byte) 0xFF, (byte) 0xFF }; // tmp?
 		read(apdu, some_buffer_to_store_the_data);
 
 		// Prepare reponse
@@ -90,18 +97,13 @@ public class Card extends Applet implements ISO7816 {
 	 *            the APDU to handle the instruction byte from.
 	 * @param ins
 	 *            the instruction byte to check
+	 * @throws UserException when the length of the amount of credits is longer than two bytes, i.e. not a short.
 	 */
-	private void handleInstruction(APDU apdu, byte ins) {
+	private void handleInstruction(APDU apdu, byte ins) throws UserException {
 		switch (state) {
 		case STATE_INIT:
 			// When initializing we have several options to set cryptographic keys etc.
 			switch (ins) {
-			case INS_SET_TERM_PUB_MOD:
-				// Set the terminal's public key
-				break;
-			case INS_SET_TERM_PUB_EXP:
-				// Set the terminal's public key
-				break;
 			case INS_ISSUE:
 				// The card is ready for general use.
 				state = STATE_INIT;
@@ -116,13 +118,21 @@ public class Card extends Applet implements ISO7816 {
 				handshake(apdu);
 				break;
 			case INS_ADD_PTS:
-				add(apdu);
+				if (read(apdu, tmp) == 2) {
+					add(Util.makeShort(tmp[0], tmp[1]));
+				} else {
+					UserException.throwIt(CONSTANTS.SW2_CREDITS_WRONG_LENGTH);
+				}
 				break;
 			case INS_SPEND_PTS:
-				spend(apdu);
+				if (read(apdu, tmp) == 2) {
+					this.spend(Util.makeShort(tmp[0], tmp[1]));
+				} else {
+					UserException.throwIt(CONSTANTS.SW2_CREDITS_WRONG_LENGTH);
+				}
 				break;
 			case INS_CHECK_BAL:
-				check(apdu);
+				checkCredits();
 				break;
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
@@ -193,10 +203,15 @@ public class Card extends Applet implements ISO7816 {
 
 	/**
 	 * Send a message encrypted with RSA 512.
-	 * @param key the receiving party's public key.
-	 * @param data the buffer that holds the message to be sent.
-	 * @param length the length of the message in the buffer.
-	 * @param apdu the APDU that invoked this response.
+	 * 
+	 * @param key
+	 *            the receiving party's public key.
+	 * @param data
+	 *            the buffer that holds the message to be sent.
+	 * @param length
+	 *            the length of the message in the buffer.
+	 * @param apdu
+	 *            the APDU that invoked this response.
 	 */
 	private void sendRSAEncrypted(Key key, byte[] data, short length, APDU apdu) {
 		if (!isAuthenticated()) {
@@ -204,12 +219,12 @@ public class Card extends Applet implements ISO7816 {
 		} else {
 			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_ALREADY_PERFORMED);
 		}
-		
+
 		if (length > CONSTANTS.APDU_DATA_SIZE_MAX || length <= 0) {
 			throwException(ISO7816.SW_WRONG_LENGTH);
 			return;
 		}
-		
+
 		apdu.setOutgoing();
 		apdu.setOutgoingLength(length);
 		apdu.sendBytesLong(data, (short) 0, length);
@@ -238,38 +253,45 @@ public class Card extends Applet implements ISO7816 {
 		byte[] challenge = { (byte) 0xFF }; // empty
 
 		// Encrypt this challenge
-		Key k = crypto.getCompanyKey();
-		sendRSAEncrypted(k, challenge, (short) challenge.length, apdu);
-
-		// send it
+		sendRSAEncrypted(crypto.getCompanyKey(), challenge, (short) challenge.length, apdu);
 	}
 
-	private byte[] encrypt(byte[] plaintext, Key key) {
-		byte[] ciphertext = null;
-		return ciphertext;
-	}
-
-	private byte[] decrypt(byte[] ciphertext, Key key) {
-		byte[] plaintext = null;
-		return plaintext;
-	}
-
-	private short add(APDU apdu) {
-		// read(apdu, tmp);
+	/**
+	 * Adds an amount of credits to the balance of <code>this</code> card.
+	 * 
+	 * @param amount
+	 *            the amount of (non-zero and non-negative) credits to add to the balance.
+	 * @return the new balance.
+	 */
+	private short add(short amount) {
 		try {
-			crypto.gain((short) 0);
+			JCSystem.beginTransaction();
+			crypto.gain(amount);
+			JCSystem.commitTransaction();
 		} catch (ISOException ie) {
 			// TODO What to do with the exception once caught?
+		} catch (TransactionException te) {
+
 		}
 		return crypto.getBalance();
 	}
 
-	private short spend(APDU apdu) {
-		// read(apdu, tmp);
+	/**
+	 * Decrements the balance of <code>this</code> card by a number of credits.
+	 * 
+	 * @param amount
+	 *            the (non-negative) amount of credits to subtract.
+	 * @return the new balance.
+	 */
+	private short spend(short amount) {
 		try {
-			crypto.spend((short) 0);
+			JCSystem.beginTransaction();
+			crypto.spend(amount);
+			JCSystem.commitTransaction();
 		} catch (ISOException ie) {
 			// TODO What to do with the exception once caught?
+		} catch (TransactionException te) {
+
 		}
 		return crypto.getBalance();
 	}
@@ -280,9 +302,8 @@ public class Card extends Applet implements ISO7816 {
 	 * @param
 	 * @return the current balance.
 	 */
-	private short check(APDU apdu) {
-		// read(apdu, tmp);
-		// TODO Make sure the user is authenticated?
+	private short checkCredits() {
+
 		return crypto.getBalance();
 	}
 
