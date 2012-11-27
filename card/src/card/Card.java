@@ -19,25 +19,8 @@ import javacard.security.Key;
  * @author Robin Oostrum
  */
 public class Card extends Applet implements ISO7816 {
-	private static final byte INS_ISSUE = (byte) 0x40;
 
-	/* INStructions to save the terminal's public key on the card */
-	private static final byte INS_SET_TERM_PUB_MOD = (byte) 0x42;
-	private static final byte INS_SET_TERM_PUB_EXP = (byte) 0x52;
-
-	private static final byte INS_MUT_AUTH = (byte) 0xAA;
-
-	/* INStructions that allow the terminal to change or view the amount of credits */
-	private static final byte INS_ADD_PTS = (byte) 0xA0;
-	private static final byte INS_SPEND_PTS = (byte) 0xB0;
-	private static final byte INS_CHECK_BAL = (byte) 0xC0;
-
-	/** Initialization state. Allows for cryptography initialization */
-	private static final byte STATE_INIT = 0;
-	/** Issued state. The card is ready for use in a supermarket. */
-	private static final byte STATE_ISSUED = 1;
-
-	/** Temporary buffer in RAM. */
+	/** Buffer in RAM, which's size is the length of an APDU data field */
 	byte[] tmp;
 
 	/** The applet state (<code>INIT</code> or <code>ISSUED</code>). */
@@ -48,11 +31,12 @@ public class Card extends Applet implements ISO7816 {
 
 	public Card() {
 		// Check if the card has already been initialized. If so, don't do it again
-		if (state == STATE_INIT) {
+		if (state == CONSTANTS.STATE_INIT) {
 			crypto = new Crypto(this);
+			tmp = JCSystem.makeTransientByteArray(CONSTANTS.APDU_DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT);
 			// Set the state of the card to initialization to allow for key generation and uploading
 		} else {
-			state = STATE_INIT;
+			state = CONSTANTS.STATE_INIT;
 		}
 	}
 
@@ -87,8 +71,7 @@ public class Card extends Applet implements ISO7816 {
 			// TODO Auto-generated catch block
 		}
 
-		byte[] some_buffer_to_store_the_data = { (byte) 0xFF, (byte) 0xFF }; // tmp?
-		read(apdu, some_buffer_to_store_the_data);
+		short numberOfBytes = read(apdu, tmp);
 
 		// Prepare reponse
 		Util.setShort(buf, (short) 1, (short) 0);
@@ -108,36 +91,36 @@ public class Card extends Applet implements ISO7816 {
 	 */
 	private void handleInstruction(APDU apdu, byte ins) throws UserException {
 		switch (state) {
-		case STATE_INIT:
+		case CONSTANTS.STATE_INIT:
 			// When initializing we have several options to set cryptographic keys etc.
 			switch (ins) {
-			case INS_ISSUE:
-				state = STATE_INIT;
+			case CONSTANTS.INS_ISSUE:
+				state = CONSTANTS.STATE_INIT;
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
 			}
 			break;
-		case STATE_ISSUED:
+		case CONSTANTS.STATE_ISSUED:
 			// If the card has been finalized it is ready for regular use
 			switch (ins) {
-			case INS_MUT_AUTH:
+			case CONSTANTS.INS_AUTHENTICATE:
 				handshake(apdu);
 				break;
-			case INS_ADD_PTS:
+			case CONSTANTS.INS_BAL_INC:
 				if (read(apdu, tmp) == 2) {
 					add(Util.makeShort(tmp[0], tmp[1]));
 				} else {
 					UserException.throwIt(CONSTANTS.SW2_CREDITS_WRONG_LENGTH);
 				}
 				break;
-			case INS_SPEND_PTS:
+			case CONSTANTS.INS_BAL_DEC:
 				if (read(apdu, tmp) == 2) {
 					this.spend(Util.makeShort(tmp[0], tmp[1]));
 				} else {
 					UserException.throwIt(CONSTANTS.SW2_CREDITS_WRONG_LENGTH);
 				}
 				break;
-			case INS_CHECK_BAL:
+			case CONSTANTS.INS_BAL_CHECK:
 				checkCredits();
 				break;
 			default:

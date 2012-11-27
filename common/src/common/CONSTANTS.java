@@ -3,7 +3,9 @@ package common;
 public class CONSTANTS {
 	public static final int KEY_SIZE = 512;
 	public static final int SEQNR_BYTESIZE = 4;
-	
+	public static final byte STATE_INIT = 0;
+	public static final byte STATE_ISSUED = 1;
+
 	/* APDU chaining APDUs */
 	public static final byte CLA_CHAIN_LAST_OR_NONE = (byte) 0x00;
 	public static final byte CLA_CHAIN_FIRST_OR_NEXT = (byte) 0x10;
@@ -20,15 +22,23 @@ public class CONSTANTS {
 	public static final byte P2_AUTHENTICATE_STEP2 = (byte) 0x02;
 
 	/* Car issuance APDUs */
-	public static final byte INS_RENT_CAR = (byte) 0x0B;
+	// public static final byte INS_RENT_CAR = (byte) 0x0B;
 
 	/* Car return APDUs */
-	public static final byte INS_RETURN_CAR = (byte) 0x0A;
-	public static final byte INS_GET_CREDITS = (byte) 0x0C;
+	// public static final byte INS_RETURN_CAR = (byte) 0x0A;
+	// public static final byte INS_GET_CREDITS = (byte) 0x0C;
 
 	/* Car driving APDUs */
-	public static final byte INS_SET_TEAR = (byte) 0x0D;
-	public static final byte INS_WRITE_CREDITS = (byte) 0x0E;
+	// public static final byte INS_SET_TEAR = (byte) 0x0D;
+	// public static final byte INS_WRITE_CREDITS = (byte) 0x0E;
+
+	/* Card issuance APDUs */
+	public static final byte INS_ISSUE = (byte) 0x0A;
+
+	/* Balance operations instructions */
+	public static final byte INS_BAL_INC = (byte) 0x0B;
+	public static final byte INS_BAL_CHECK = (byte) 0x0C;
+	public static final byte INS_BAL_DEC = (byte) 0x0D;
 
 	/* Couldn't get the ISO standard APDU to work, so put this in. */
 	public static final byte INS_GET_RESPONSE = (byte) 0x0F;
@@ -41,10 +51,9 @@ public class CONSTANTS {
 	/* Success codes, as defined by ISO 7816, 5.1.3 */
 	public static final byte SW1_SUCCESS = (byte) 0x90;
 	public static final byte SW1_MORE_DATA_AVAILABLE_00 = (byte) 0x61; // DO NOT
-																		// USE
+	// USE
 	/*
-	 * Our self defined code to indicate further response data Use:
-	 * ISOException.throwIt(((SW1_MORE_DATA << 8) & 0xff00) | SW2_MORE_DATA);
+	 * Our self defined code to indicate further response data Use: ISOException.throwIt(((SW1_MORE_DATA << 8) & 0xff00) | SW2_MORE_DATA);
 	 */
 	public static final byte SW1_MORE_DATA = (byte) 0x67;
 	public static final byte SW2_MORE_DATA = (byte) 0x01;
@@ -125,8 +134,7 @@ public class CONSTANTS {
 	public static final short APDU_SIZE_MAX = (short) 255;
 	public static final short APDU_DATA_SIZE_MAX = (short) 236;
 	public static final short APDU_MESSAGE_CRYPTO_OVERHEAD = (short) 3;
-	public static final short APDU_MESSAGE_SIZE_MAX = APDU_DATA_SIZE_MAX
-			+ APDU_MESSAGE_CRYPTO_OVERHEAD;
+	public static final short APDU_MESSAGE_SIZE_MAX = APDU_DATA_SIZE_MAX + APDU_MESSAGE_CRYPTO_OVERHEAD;
 	public static final short DATA_SIZE_MAX = (short) 1024;
 
 	public static final short NONCE_LENGTH = (short) 8;
@@ -159,16 +167,8 @@ public class CONSTANTS {
 	public static final short PERS_MSG_OFFSET_PRIV_PQ = (short) (PERS_MSG_OFFSET_PRIV_DQ + RSA_KEY_CRT_COMP_LENGTH);
 	// public static final short PERS_MSG_OFFSET_MOD = (short)
 	// (PERS_MSG_OFFSET_PRIV_PQ + RSA_KEY_CRT_COMP_LENGTH);
-	public static final short PERS_MSG_OFFSET_PUBKEY = (short) (PERS_MSG_OFFSET_PRIV_PQ + RSA_KEY_CRT_COMP_LENGTH); // NOT
-																													// a
-																													// bug,
-																													// modulus
-																													// is
-																													// read
-																													// twice
-																													// from
-																													// same
-																													// location.
+	public static final short PERS_MSG_OFFSET_PUBKEY = (short) (PERS_MSG_OFFSET_PRIV_PQ + RSA_KEY_CRT_COMP_LENGTH);
+	// The above is NOT a bug, modulus is read twice from same location.
 	public static final short PERS_MSG_LENGTH = (short) (PERS_MSG_OFFSET_PUBKEY + RSA_SIGNED_PUBKEY_LENGTH);
 
 	public static final short CERT_OFFSET_CARDID = (short) 0;
@@ -187,9 +187,7 @@ public class CONSTANTS {
 
 	public static final short AUTH_MSG_1_OFFSET_NA = (short) 0;
 	public static final short AUTH_MSG_1_OFFSET_ID = (short) (AUTH_MSG_1_OFFSET_NA + NONCE_LENGTH);
-	public static final short AUTH_MSG_1_OFFSET_SIGNED_PUBKEY = (short) (AUTH_MSG_1_OFFSET_NA + NONCE_LENGTH); // Not
-																												// a
-																												// bug.
+	public static final short AUTH_MSG_1_OFFSET_SIGNED_PUBKEY = (short) (AUTH_MSG_1_OFFSET_NA + NONCE_LENGTH); // Not a bug.
 	public static final short AUTH_MSG_1_LENGTH = (short) (AUTH_MSG_1_OFFSET_SIGNED_PUBKEY + RSA_SIGNED_PUBKEY_LENGTH);
 
 	public static final short AUTH_MSG_2_OFFSET_NA = (short) 0;
