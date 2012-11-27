@@ -165,22 +165,6 @@ public final class Crypto {
 		return length;
 	}
 
-	private void reset() {
-		// TODO Reset the active session
-		/*
-		 * Things that have to be reset/cleared are:
-		 * 
-		 * all buffers
-		 * all keys (supermarket key is fixed, won't reset)
-		 * auth_status = false
-		 */
-	}
-
-	private void generateSessionKey() {
-		// TODO generate AES session key with RNG or nonces, and padding
-		return;
-	}
-
 	void symDecrypt(byte[] ciphertext) {
 		byte[] plaintext = { (byte) 0xFF };
 		return;
@@ -220,11 +204,38 @@ public final class Crypto {
 		return numberOfBytes;
 	}
 
-	byte[] pubDecrypt(byte[] ciphertext) {
-		byte[] plaintext = { (byte) 0xFF };
-		return plaintext;
+	short pubDecrypt(byte[] ciphertext, short ctOff, short ctLen, byte[] plaintext, short ptOff) {
+		verifyBufferLength(ciphertext, ctOff, ctLen);
+		verifyBufferLength(plaintext, ptOff);
+		
+		short numberOfBytes = 0;
+		
+		rsaCipher.init(privKeyCard, Cipher.MODE_DECRYPT);
+		numberOfBytes = rsaCipher.doFinal(ciphertext, ctOff, ctLen, plaintext, ptOff);
+		
+		// This function's contents should be integrated in pubDecrypt()
+		// short bytesRead = rsaDecrypt(privKeyCard, ciphertext, ctOff, ctLen, plaintext, ptOff);
+		
+		return numberOfBytes;
+	}
+	
+
+	private void reset() {
+		// TODO Reset the active session
+		/*
+		 * Things that have to be reset/cleared are:
+		 * 
+		 * all buffers
+		 * all keys (supermarket key is fixed, won't reset)
+		 * auth_status = false
+		 */
 	}
 
+	private void generateSessionKey() {
+		// TODO generate AES session key with RNG or nonces, and padding
+		return;
+	}
+	
 	/**
 	 * Checks for possible buffer overflows and throws an exception in that case.
 	 * 
