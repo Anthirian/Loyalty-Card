@@ -15,7 +15,7 @@ public class CONSTANTS {
 	/* Authentication APDUs */
 	public static final byte INS_AUTHENTICATE = (byte) 0x09;
 	public static final byte P1_AUTHENTICATE_OFFICE = (byte) 0x01;
-	public static final byte P1_AUTHENTICATE_CAR = (byte) 0x02;
+	public static final byte P1_AUTHENTICATE_SUPERMARKET = (byte) 0x02;
 	public static final byte P2_AUTHENTICATE_STEP1 = (byte) 0x01;
 	public static final byte P2_AUTHENTICATE_STEP2 = (byte) 0x02;
 

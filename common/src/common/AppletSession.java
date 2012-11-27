@@ -17,7 +17,7 @@ public class AppletSession {
 	private TerminalCrypto crypto;
 	private AppletCommunication com;
 	
-	private RSAPublicKey pubKeySupermarket;
+	private RSAPublicKey pubKeyOverhead;
 	private RSAPublicKey pubKeyCard;
 	private RSAPrivateKey privKey;
 	
@@ -25,12 +25,11 @@ public class AppletSession {
 	private int cardId;
 	
 	private byte[] sessionKey;
-	private byte[] certificate;
 	private boolean authenticationSuccess;
 	
-	public AppletSession(RSAPublicKey pubKeySupermarket, RSAPrivateKey privKey,
+	public AppletSession(RSAPublicKey pubKeyOverhead, RSAPrivateKey privKey,
 			int terminalId) {
-		this.pubKeySupermarket = pubKeySupermarket;
+		this.pubKeyOverhead = pubKeyOverhead;
 		this.terminalId = terminalId;
 		this.privKey = privKey;
 		this.crypto = new TerminalCrypto();
@@ -53,10 +52,6 @@ public class AppletSession {
 		return privKey;
 	}
 	
-	public byte[] getCertificate() {
-		return certificate;
-	}
-	
 	public boolean isAuthenticated() {
 		return authenticationSuccess;
 	}
@@ -67,7 +62,6 @@ public class AppletSession {
 	
 	public void reset() {
 		this.cardId = 0;
-		this.certificate = null;
 		this.pubKeyCard = null;
 		this.authenticationSuccess = false;
 		this.sessionKey = null;
@@ -155,7 +149,7 @@ public class AppletSession {
 						+ CONSTANTS.RSA_SIGNED_PUBKEY_LENGTH);
 
 		try {
-			data = crypto.verify(cert, pubKeySupermarket);
+			data = crypto.verify(cert, pubKeyOverhead);
 		} catch (SignatureException e) {
 			throw new SecurityException();
 		}
@@ -192,7 +186,7 @@ public class AppletSession {
 	
 	private byte[] authenticateTerminal(byte from, byte[] nonceCard,
 			byte[] nonceTerminal) {
-		// build the message to be send to the card
+		// build the message to be sent to the card
 		byte[] data = new byte[CONSTANTS.AUTH_MSG_2_LENGTH];
 		System.arraycopy(nonceCard, 0, data, CONSTANTS.AUTH_MSG_2_OFFSET_NA,
 				CONSTANTS.NONCE_LENGTH);
@@ -203,7 +197,7 @@ public class AppletSession {
 		System.arraycopy(terminalIdBytes, 0, data,
 				CONSTANTS.AUTH_MSG_2_OFFSET_ID, CONSTANTS.ID_LENGTH);
 
-		// encrypt the message with the cards' public key
+		// encrypt the message with the card's public key
 		data = crypto.encrypt(data, this.pubKeyCard);
 
 		// send the command
@@ -230,9 +224,6 @@ public class AppletSession {
 		byte[] nonceReceived = Arrays.copyOfRange(data,
 				CONSTANTS.AUTH_MSG_3_OFFSET_NB,
 				CONSTANTS.AUTH_MSG_3_OFFSET_NB + CONSTANTS.NONCE_LENGTH);
-		this.certificate = Arrays.copyOfRange(data,
-				CONSTANTS.AUTH_MSG_3_OFFSET_CERT,
-				CONSTANTS.AUTH_MSG_3_OFFSET_CERT + CONSTANTS.CERT_LENGTH);
 		
 		return nonceReceived;
 	}
