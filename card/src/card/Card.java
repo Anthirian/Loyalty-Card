@@ -193,7 +193,7 @@ public class Card extends Applet implements ISO7816 {
 	 *            the APDU that invoked this response
 	 */
 	private void sendAESEncrypted(byte[] data, short length, APDU apdu) {
-		if (isAuthenticated()) {
+		if (crypto.authenticated()) {
 			length = crypto.symEncrypt(data, (short) 0, length, data, (short) 0);
 		}
 		if (length > CONSTANTS.APDU_DATA_SIZE_MAX || length <= 0) {
@@ -220,7 +220,7 @@ public class Card extends Applet implements ISO7816 {
 	 *            the APDU that invoked this response.
 	 */
 	private void sendRSAEncrypted(Key key, byte[] data, short length, APDU apdu) {
-		if (!isAuthenticated()) {
+		if (!crypto.authenticated()) {
 			length = crypto.pubEncrypt(key, data, (short) 0, length, data, (short) 0);
 		} else {
 			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_ALREADY_PERFORMED);
@@ -234,16 +234,6 @@ public class Card extends Applet implements ISO7816 {
 		apdu.setOutgoing();
 		apdu.setOutgoingLength(length);
 		apdu.sendBytesLong(data, (short) 0, length);
-	}
-
-	/**
-	 * Checks the status of the session, i.e. wheter the handshake has been successfully completed.
-	 * 
-	 * @return <code>true</code> if <code>this</code> card has an active session.<br />
-	 *         <code>false</code> if <code>this</code> has not completed the handshake.
-	 */
-	boolean isAuthenticated() {
-		return crypto.getAuthStatus();
 	}
 
 	/**
@@ -308,7 +298,7 @@ public class Card extends Applet implements ISO7816 {
 	 * @return the current balance.
 	 */
 	private short checkCredits() {
-		if (isAuthenticated()) {
+		if (crypto.authenticated()) {
 			return crypto.getBalance();
 		} else {
 			throwException(CONSTANTS.SW1_COMMAND_NOT_ALLOWED_00, CONSTANTS.SW2_NO_AUTH_PERFORMED);

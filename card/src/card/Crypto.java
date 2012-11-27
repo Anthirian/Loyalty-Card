@@ -117,7 +117,7 @@ public final class Crypto {
 	 *             when the card is not authenticated yet.
 	 */
 	short symEncrypt(byte[] plaintext, short ptOff, short ptLen, byte[] ciphertext, short ctOff) {
-		if (!c.isAuthenticated()) {
+		if (!authenticated()) {
 			Card.throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_NO_AUTH_PERFORMED);
 			return 0;
 		}
@@ -147,14 +147,13 @@ public final class Crypto {
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_SESSION_ENCRYPT_ERR);
 			return 0;
 		}
-		
-		
+
 		// Generate AES key
 		if (!sessionKey.isInitialized()) {
 			generateSessionKey();
 		}
-		
-		// Perform actual encryption 
+
+		// Perform actual encryption
 		short length = 0;
 		try {
 			aesCipher.init(sessionKey, Cipher.MODE_ENCRYPT);
@@ -166,7 +165,6 @@ public final class Crypto {
 	}
 
 	void symDecrypt(byte[] ciphertext) {
-		byte[] plaintext = { (byte) 0xFF };
 		return;
 	}
 
@@ -186,6 +184,8 @@ public final class Crypto {
 	 * @param ctOff
 	 *            the offset for the ciphertext.
 	 * @return the number of bytes that were encrypted.
+	 * @throws ISOException
+	 *             when a CryptoException is caught.
 	 */
 	short pubEncrypt(Key key, byte[] plaintext, short ptOff, short ptLen, byte[] ciphertext, short ctOff) {
 		verifyBufferLength(plaintext, ptOff, ptLen);
@@ -196,38 +196,50 @@ public final class Crypto {
 		try {
 			rsaCipher.init(key, Cipher.MODE_ENCRYPT);
 			numberOfBytes = rsaCipher.doFinal(plaintext, ptOff, ptLen, ciphertext, ctOff);
-		} catch (CryptoException e) {
-			// TODO reset the authentication session?
-			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, (byte) e.getReason());
+		} catch (CryptoException ce) {
+			reset();
+			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, (byte) ce.getReason());
 			return 0;
 		}
 		return numberOfBytes;
 	}
 
+	/**
+	 * Decrypts a ciphertext using public key cryptography.
+	 * 
+	 * @param ciphertext
+	 * @param ctOff
+	 * @param ctLen
+	 * @param plaintext
+	 * @param ptOff
+	 * @return Length of decrypted message in <code>plaintext</code>. Will be 0 if decryption fails.
+	 * @throws ISOException
+	 *             when a CryptoException is caught.
+	 */
 	short pubDecrypt(byte[] ciphertext, short ctOff, short ctLen, byte[] plaintext, short ptOff) {
 		verifyBufferLength(ciphertext, ctOff, ctLen);
 		verifyBufferLength(plaintext, ptOff);
-		
+
 		short numberOfBytes = 0;
-		
-		rsaCipher.init(privKeyCard, Cipher.MODE_DECRYPT);
-		numberOfBytes = rsaCipher.doFinal(ciphertext, ctOff, ctLen, plaintext, ptOff);
-		
-		// This function's contents should be integrated in pubDecrypt()
-		// short bytesRead = rsaDecrypt(privKeyCard, ciphertext, ctOff, ctLen, plaintext, ptOff);
-		
+
+		try {
+			rsaCipher.init(privKeyCard, Cipher.MODE_DECRYPT);
+			numberOfBytes = rsaCipher.doFinal(ciphertext, ctOff, ctLen, plaintext, ptOff);
+		} catch (CryptoException ce) {
+			reset();
+			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, (byte) ce.getReason());
+			return 0;
+		}
+
 		return numberOfBytes;
 	}
-	
 
 	private void reset() {
 		// TODO Reset the active session
 		/*
 		 * Things that have to be reset/cleared are:
 		 * 
-		 * all buffers
-		 * all keys (supermarket key is fixed, won't reset)
-		 * auth_status = false
+		 * all buffers all keys (supermarket key is fixed, won't reset) auth_status = false
 		 */
 	}
 
@@ -235,7 +247,7 @@ public final class Crypto {
 		// TODO generate AES session key with RNG or nonces, and padding
 		return;
 	}
-	
+
 	/**
 	 * Checks for possible buffer overflows and throws an exception in that case.
 	 * 
@@ -243,6 +255,8 @@ public final class Crypto {
 	 *            the buffer to check for overflows.
 	 * @param offset
 	 *            the offset of the buffer.
+	 * @throws ISOException
+	 *             when a buffer overflow might occur with these parameters.
 	 */
 	private void verifyBufferLength(byte[] buf, short offset) {
 		if (offset < 0 || offset >= buf.length) {
@@ -259,6 +273,8 @@ public final class Crypto {
 	 *            the offset of the buffer.
 	 * @param length
 	 *            the length of the buffer.
+	 * @throws ISOException
+	 *             when a buffer overflow might occur with these parameters
 	 */
 	private void verifyBufferLength(byte[] buf, short offset, short length) {
 		if (offset < 0 || length < 0 || offset + length >= buf.length) {
@@ -289,7 +305,8 @@ public final class Crypto {
 	 * Gain an amount of credits from shopping for groceries.
 	 * 
 	 * @param amount
-	 * @return a <code>short</code> containing the new balance after increase. The short should make ensure only positive values.
+	 *            the amount by which to increase the balance.
+	 * @return the new balance after increase.
 	 * @throws ISOException
 	 *             when <code>amount</code> is negative.
 	 */
@@ -303,25 +320,40 @@ public final class Crypto {
 	}
 
 	/**
-	 * Returns the current balance of the applet. Assumes the user is currently authenticated. TODO Definitely cryptographically unsafe!
+	 * Returns the current balance of the card, if authenticated.
 	 * 
 	 * @return the current balance.
+	 * @throws ISOException
+	 *             if the user is not authenticated yet.
 	 */
 	short getBalance() {
-		return balance;
+		if (authenticated()) {
+			return balance;
+		} else {
+			Card.throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_NO_AUTH_PERFORMED);
+			return 0;
+		}
 	}
 
-	
-	boolean getAuthStatus() {
+	/**
+	 * Checks the authentication status.
+	 * 
+	 * @return <code>true</code> if the card has previously authenticated to a terminal.<br />
+	 *         <code>false</code>otherwise.
+	 */
+	boolean authenticated() {
 		return authState == 1;
 	}
-	
+
 	/**
 	 * Retrieves the supermarket's public key to use for encryption.
+	 * 
 	 * @return the supermarket's public key.
+	 * @throws ISOException
+	 *             if the supermarket's public key is not initialized yet.
 	 */
 	Key getCompanyKey() {
-		if(pubKeyCompany.isInitialized()) {
+		if (pubKeyCompany.isInitialized()) {
 			return pubKeyCompany;
 		} else {
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_AUTH_PARTNER_KEY_NOT_INIT);
