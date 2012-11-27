@@ -164,8 +164,18 @@ public final class Crypto {
 		return length;
 	}
 
-	void symDecrypt(byte[] ciphertext) {
-		return;
+	short symDecrypt(byte[] ciphertext, short ctOff, short ctLen, byte[] plaintext, short ptOff) {
+		// TODO AES Decryption not finished yet
+
+		short length = 0;
+		try {
+			aesCipher.init(sessionKey, Cipher.MODE_DECRYPT);
+			length = aesCipher.doFinal(ciphertext, ctOff, ctLen, plaintext, ptOff);
+		} catch (CryptoException ce) {
+			c.reset();
+			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, (byte) ce.getReason());
+		}
+		return length;
 	}
 
 	/**
