@@ -134,7 +134,7 @@ public final class Crypto {
 
 		short pad = (short) (16 - (ptLen % 16));
 		if (ptOff + ptLen + pad > plaintext.length) {
-			reset();
+			c.reset();
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_SESSION_ENCRYPT_ERR);
 			return 0;
 		}
@@ -143,7 +143,7 @@ public final class Crypto {
 		ptLen = (short) (ptLen + pad);
 
 		if (ptLen % 16 != 0) {
-			reset();
+			c.reset();
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_SESSION_ENCRYPT_ERR);
 			return 0;
 		}
@@ -159,7 +159,7 @@ public final class Crypto {
 			aesCipher.init(sessionKey, Cipher.MODE_ENCRYPT);
 			length = aesCipher.doFinal(ciphertext, ctOff, ptLen, ciphertext, ctOff);
 		} catch (CryptoException ce) {
-			reset();
+			c.reset();
 		}
 		return length;
 	}
@@ -197,7 +197,7 @@ public final class Crypto {
 			rsaCipher.init(key, Cipher.MODE_ENCRYPT);
 			numberOfBytes = rsaCipher.doFinal(plaintext, ptOff, ptLen, ciphertext, ctOff);
 		} catch (CryptoException ce) {
-			reset();
+			c.reset();
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, (byte) ce.getReason());
 			return 0;
 		}
@@ -226,7 +226,7 @@ public final class Crypto {
 			rsaCipher.init(privKeyCard, Cipher.MODE_DECRYPT);
 			numberOfBytes = rsaCipher.doFinal(ciphertext, ctOff, ctLen, plaintext, ptOff);
 		} catch (CryptoException ce) {
-			reset();
+			c.reset();
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, (byte) ce.getReason());
 			return 0;
 		}
@@ -234,18 +234,21 @@ public final class Crypto {
 		return numberOfBytes;
 	}
 
-	private void reset() {
-		// TODO Reset the active session
-		/*
-		 * Things that have to be reset/cleared are:
-		 * 
-		 * all buffers all keys (supermarket key is fixed, won't reset) auth_status = false
-		 */
-	}
-
 	private void generateSessionKey() {
 		// TODO generate AES session key with RNG or nonces, and padding
 		return;
+	}
+
+	/**
+	 * Clears all session-related data from the Crypto object.
+	 */
+	void clearSessionData() {
+		sessionKey.clearKey();
+		messageKey.clearKey();
+		Util.arrayFillNonAtomic(tmpKey, (short) 0, (short) tmpKey.length, (byte) 0);
+		Util.arrayFillNonAtomic(cardNonce, (short) 0, (short) cardNonce.length, (byte) 0);
+		Util.arrayFillNonAtomic(termNonce, (short) 0, (short) termNonce.length, (byte) 0);
+		authState = 0;
 	}
 
 	/**

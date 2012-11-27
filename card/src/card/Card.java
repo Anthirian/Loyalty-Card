@@ -60,7 +60,7 @@ public class Card extends Applet implements ISO7816 {
 		short lc = (short) (buf[ISO7816.OFFSET_LC] & 0x00FF);
 
 		if (lc > CONSTANTS.APDU_SIZE_MAX || lc == 0) {
-			// reset();
+			crypto.reset();
 			throwException(CONSTANTS.SW1_WRONG_LE_FIELD_00, CONSTANTS.SW2_LC_INCORRECT);
 			return;
 		}
@@ -300,6 +300,17 @@ public class Card extends Applet implements ISO7816 {
 	private void memoryFull(byte[] buf) {
 		throwException(ISO7816.SW_FILE_FULL);
 		clear(buf);
+	}
+	
+	void reset() {
+		// TODO Reset the active session
+		/*
+		 * Things that have to be reset/cleared are:
+		 * 
+		 * all buffers all keys (supermarket key is fixed, won't reset) auth_status = false
+		 */
+		clear(tmp);
+		crypto.clearSessionData();
 	}
 
 	/**
