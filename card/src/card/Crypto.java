@@ -234,9 +234,16 @@ public final class Crypto {
 		return numberOfBytes;
 	}
 
+	/**
+	 * Generates the AES session key from two nonces. This key is used until the card is removed from the terminal. The nonces are cleared after key generation.
+	 */
 	private void generateSessionKey() {
-		// TODO generate AES session key with RNG or nonces, and padding
-		return;
+		Util.arrayCopyNonAtomic(cardNonce, (short) 0, tmpKey, (short) 0, CONSTANTS.NONCE_LENGTH);
+		Util.arrayCopyNonAtomic(termNonce, (short) 0, tmpKey, CONSTANTS.NONCE_LENGTH, CONSTANTS.NONCE_LENGTH);
+		sessionKey.setKey(tmpKey, (short) 0);
+		Util.arrayFillNonAtomic(tmpKey, (short) 0, (short) tmpKey.length, (byte) 0);
+		Util.arrayFillNonAtomic(cardNonce, (short) 0, CONSTANTS.NONCE_LENGTH, (byte) 0);
+		Util.arrayFillNonAtomic(termNonce, (short) 0, CONSTANTS.NONCE_LENGTH, (byte) 0);
 	}
 
 	/**

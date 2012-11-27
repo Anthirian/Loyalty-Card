@@ -301,14 +301,11 @@ public class Card extends Applet implements ISO7816 {
 		throwException(ISO7816.SW_FILE_FULL);
 		clear(buf);
 	}
-	
+
+	/**
+	 * Resets all buffers and crypto-related objects
+	 */
 	void reset() {
-		// TODO Reset the active session
-		/*
-		 * Things that have to be reset/cleared are:
-		 * 
-		 * all buffers all keys (supermarket key is fixed, won't reset) auth_status = false
-		 */
 		clear(tmp);
 		crypto.clearSessionData();
 	}
