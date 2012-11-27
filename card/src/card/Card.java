@@ -73,14 +73,20 @@ public class Card extends Applet implements ISO7816 {
 		byte ins = buf[ISO7816.OFFSET_INS];
 		byte p1 = buf[ISO7816.OFFSET_P1];
 		byte p2 = buf[ISO7816.OFFSET_P2];
-		byte lc = buf[ISO7816.OFFSET_LC];
+		short lc = (short) (buf[ISO7816.OFFSET_LC] & 0x00FF);
+
+		if (lc > CONSTANTS.APDU_SIZE_MAX || lc == 0) {
+			// reset();
+			throwException(CONSTANTS.SW1_WRONG_LE_FIELD_00, CONSTANTS.SW2_LC_INCORRECT);
+			return;
+		}
 
 		try {
 			handleInstruction(apdu, ins);
 		} catch (UserException e) {
 			// TODO Auto-generated catch block
 		}
-		
+
 		byte[] some_buffer_to_store_the_data = { (byte) 0xFF, (byte) 0xFF }; // tmp?
 		read(apdu, some_buffer_to_store_the_data);
 
@@ -97,7 +103,8 @@ public class Card extends Applet implements ISO7816 {
 	 *            the APDU to handle the instruction byte from.
 	 * @param ins
 	 *            the instruction byte to check
-	 * @throws UserException when the length of the amount of credits is longer than two bytes, i.e. not a short.
+	 * @throws UserException
+	 *             when the length of the amount of credits is longer than two bytes, i.e. not a short.
 	 */
 	private void handleInstruction(APDU apdu, byte ins) throws UserException {
 		switch (state) {
@@ -105,7 +112,6 @@ public class Card extends Applet implements ISO7816 {
 			// When initializing we have several options to set cryptographic keys etc.
 			switch (ins) {
 			case INS_ISSUE:
-				// The card is ready for general use.
 				state = STATE_INIT;
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
@@ -299,12 +305,15 @@ public class Card extends Applet implements ISO7816 {
 	/**
 	 * Check the current balance of the card.
 	 * 
-	 * @param
 	 * @return the current balance.
 	 */
 	private short checkCredits() {
-
-		return crypto.getBalance();
+		if (isAuthenticated()) {
+			return crypto.getBalance();
+		} else {
+			throwException(CONSTANTS.SW1_COMMAND_NOT_ALLOWED_00, CONSTANTS.SW2_NO_AUTH_PERFORMED);
+			return 0;
+		}
 	}
 
 	/**
