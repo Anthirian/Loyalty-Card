@@ -33,9 +33,9 @@ public class SupermarketTerminal {
 	TerminalCrypto crypto;
 
 	/** Issuer public key */
-	RSAPublicKey overheadPublicKey;
+	RSAPublicKey supermarketPublicKey;
 
-	/** Supermarket's private key */
+	/** Cash register's private key */
 	RSAPrivateKey privKey;
 
 	/** keys directory */
@@ -44,15 +44,15 @@ public class SupermarketTerminal {
 	/** Current card id */
 	int cardId;
 	
-	/** Current supermarket id */
-	int supermarketId;
+	/** Current cash register id */
+	int cashRegisterId;
 	
-	public SupermarketTerminal (int supermarketId) {
-		this.supermarketId = supermarketId;
-		System.out.println("Welcome to supermarket " + supermarketId);
+	public SupermarketTerminal (int cashRegisterId) {
+		this.cashRegisterId = cashRegisterId;
+		System.out.println("Welcome to cash register " + cashRegisterId);
 		loadKeyFiles();
 		
-		session = new AppletSession(overheadPublicKey, privKey, supermarketId);
+		session = new AppletSession(supermarketPublicKey, privKey, cashRegisterId);
 		com = new AppletCommunication(session);
 		crypto = new TerminalCrypto();
 		
@@ -66,9 +66,9 @@ public class SupermarketTerminal {
 	
 	private void loadKeyFiles() {
 		try {
-			String supermarket = "Supermarket_" + this.supermarketId;
-			privKey = (RSAPrivateKey) KeyManager.loadKeyPair(supermarket).getPrivate();
-			overheadPublicKey = (RSAPublicKey) KeyManager.loadKeyPair("issuer")
+			String cashRegister = "CashRegister_" + this.cashRegisterId;
+			privKey = (RSAPrivateKey) KeyManager.loadKeyPair(cashRegister).getPrivate();
+			supermarketPublicKey = (RSAPublicKey) KeyManager.loadKeyPair("supermarket")
 					.getPublic();
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
@@ -92,6 +92,9 @@ public class SupermarketTerminal {
 		}
 		cardId = session.getCardId();
 		
+		System.out.println("Succesfully authenticated card " + cardId);
+		
+		int input = Integer.parseInt(CLI.prompt("1: add credits to card | 2: ... "));
 		
 	}
 	
