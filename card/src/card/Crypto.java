@@ -95,8 +95,30 @@ public final class Crypto {
 		return false;
 	}
 
-	short createSignature() {
-		return 0;
+	/**
+	 * Signs a message with the private key of <code>this</code> card.
+	 * 
+	 * @param data
+	 *            the data to be signed.
+	 * @param dataOff
+	 *            the offset of the data to be signed.
+	 * @param dataLen
+	 *            the length of the data to be signed.
+	 * @param sig
+	 *            the resulting signature.
+	 * @param sigOffset
+	 *            the offset of the resulting signature.
+	 * @return the length of the resulting signature in bytes.
+	 */
+	short sign(byte[] data, short dataOff, short dataLen, byte[] sig, short sigOffset) {
+		try {
+			rsaSignature.init(privKeyCard, Signature.MODE_SIGN);
+			return rsaSignature.sign(data, dataOff, dataLen, sig, sigOffset);
+		} catch (CryptoException ce) {
+			c.reset();
+			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, (byte) ce.getReason());
+			return 0;
+		}
 	}
 
 	/**
