@@ -60,7 +60,7 @@ public class Card extends Applet implements ISO7816 {
 		short lc = (short) (buf[ISO7816.OFFSET_LC] & 0x00FF);
 
 		if (lc > CONSTANTS.APDU_SIZE_MAX || lc == 0) {
-			crypto.reset();
+			reset();
 			throwException(CONSTANTS.SW1_WRONG_LE_FIELD_00, CONSTANTS.SW2_LC_INCORRECT);
 			return;
 		}
@@ -74,7 +74,9 @@ public class Card extends Applet implements ISO7816 {
 		short numberOfBytes = read(apdu, tmp);
 
 		// Prepare reponse
-		Util.setShort(buf, (short) 1, (short) 0);
+		Util.setShort(buf, ISO7816.OFFSET_CLA, (short) 0);
+		Util.setShort(buf, ISO7816.OFFSET_INS, (short) 0);
+		Util.setShort(buf, ISO7816.OFFSET_CDATA, (short) 0);
 
 		// sendEncrypted();
 	}
@@ -92,10 +94,11 @@ public class Card extends Applet implements ISO7816 {
 	private void handleInstruction(APDU apdu, byte ins) throws UserException {
 		switch (state) {
 		case CONSTANTS.STATE_INIT:
-			// When initializing we have several options to set cryptographic keys etc.
+			// When initializing the only supported instruction is the issuance of the card
 			switch (ins) {
 			case CONSTANTS.INS_ISSUE:
 				state = CONSTANTS.STATE_INIT;
+				break;
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
 			}
@@ -306,8 +309,10 @@ public class Card extends Applet implements ISO7816 {
 	 * Resets all buffers and crypto-related objects
 	 */
 	void reset() {
+		JCSystem.beginTransaction();
 		clear(tmp);
 		crypto.clearSessionData();
+		JCSystem.commitTransaction();
 	}
 
 	/**
