@@ -245,15 +245,33 @@ public final class Crypto {
 	}
 
 	/**
-	 * Generates the AES session key from two nonces. This key is used until the card is removed from the terminal. The nonces are cleared after key generation.
+	 * Generates the AES session key. This key is used until the card is removed from the terminal.
 	 */
 	private void generateSessionKey() {
-		Util.arrayCopyNonAtomic(cardNonce, (short) 0, tmpKey, (short) 0, CONSTANTS.NONCE_LENGTH);
-		Util.arrayCopyNonAtomic(termNonce, (short) 0, tmpKey, CONSTANTS.NONCE_LENGTH, CONSTANTS.NONCE_LENGTH);
+		fillRandom(tmpKey);
 		sessionKey.setKey(tmpKey, (short) 0);
+		
+		// Clear the temporary buffer holding the key.
 		Util.arrayFillNonAtomic(tmpKey, (short) 0, (short) tmpKey.length, (byte) 0);
-		Util.arrayFillNonAtomic(cardNonce, (short) 0, CONSTANTS.NONCE_LENGTH, (byte) 0);
-		Util.arrayFillNonAtomic(termNonce, (short) 0, CONSTANTS.NONCE_LENGTH, (byte) 0);
+	}
+
+	/**
+	 * Generates a nonce for use during authentication.
+	 * @param buf the buffer in which to store the nonce.
+	 */
+	private void generateNonce(byte[] buf) {
+		fillRandom(buf);
+	}
+
+	/**
+	 * Fill an entire buffer with random values.
+	 * 
+	 * @see {@link javacard.security.RandomData#generateData(byte[], short, short) generateData}
+	 * @param buf
+	 *            the buffer to be filled.
+	 */
+	private void fillRandom(byte[] buf) {
+		random.generateData(buf, (short) 0, (short) buf.length);
 	}
 
 	/**
