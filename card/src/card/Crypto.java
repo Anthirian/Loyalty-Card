@@ -40,8 +40,8 @@ public final class Crypto {
 	private RSAPublicKey pubKeyCompany;
 	private RSAPublicKey pubKeyCar;
 
-	/** The state of authentication of this card */
-	private short authState;
+	/** The state of authentication of this card, an array of size one */
+	private byte[] authState;
 
 	private byte[] cert;
 	private byte[] carID;
@@ -81,7 +81,7 @@ public final class Crypto {
 
 		random = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
 
-		authState = 0;
+		authState = JCSystem.makeTransientByteArray((short) 0, JCSystem.CLEAR_ON_DESELECT);
 
 		cert = new byte[CONSTANTS.CERT_LENGTH];
 		carID = new byte[CONSTANTS.ID_LENGTH];
@@ -265,7 +265,7 @@ public final class Crypto {
 		Util.arrayFillNonAtomic(tmpKey, (short) 0, (short) tmpKey.length, (byte) 0);
 		Util.arrayFillNonAtomic(cardNonce, (short) 0, (short) cardNonce.length, (byte) 0);
 		Util.arrayFillNonAtomic(termNonce, (short) 0, (short) termNonce.length, (byte) 0);
-		authState = 0;
+		authState[0] = 0;
 	}
 
 	/**
@@ -362,7 +362,7 @@ public final class Crypto {
 	 *         <code>false</code>otherwise.
 	 */
 	boolean authenticated() {
-		return authState == 1;
+		return authState[0] == 1;
 	}
 
 	/**
