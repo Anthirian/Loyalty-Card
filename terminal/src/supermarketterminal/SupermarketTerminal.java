@@ -103,7 +103,7 @@ public class SupermarketTerminal {
 			}
 			
 			command = CLI.prompt("1: add credits to card | " +
-					"2: remove credits from card | 9: exit \n");
+					"2: remove credits from card | 3: view balance | 9: exit \n");
 			
 			if (Integer.parseInt(command) == 1) {
 				String addcredits = "";
@@ -151,6 +151,8 @@ public class SupermarketTerminal {
 				}
 				
 				removeCredits(Integer.parseInt(removecredits));
+			} else if (Integer.parseInt(command) == 4) {	
+				getCredits();
 			}
 			else if (Integer.parseInt(command) == 9) {
 				/* Exit program */
@@ -162,8 +164,37 @@ public class SupermarketTerminal {
 		
 	}
 	
+	private void getCredits() {
+		if (!session.isAuthenticated()) {
+			throw new SecurityException(
+					"Cannot view balance, card not authenticated.");
+		}
+		Response resp = com.sendCommand(CONSTANTS.INS_BAL_CHECK);
+		if (resp == null) {
+			throw new SecurityException("Cannot view balance, card removed.");
+		}
+		if (!resp.success()) {
+			throw new SecurityException("Error checking balance.");
+		}
+		System.out.println("Balance: " + resp.toString());
+	}
+
 	private void removeCredits(int credits) {
-		writeCredits(-credits); //TODO: needs to be checked for negative balance
+		if (!session.isAuthenticated()) {
+			throw new SecurityException(
+					"Cannot remove credits, card not authenticated.");
+		}
+		byte[] creditsData = Formatter.toByteArray(credits);
+		creditsData = crypto.sign(creditsData, privKey);
+		Response resp = com.sendCommand(CONSTANTS.INS_BAL_DEC,
+				creditsData);
+		if (resp == null) {
+			throw new SecurityException("Cannot remove credits, card removed.");
+		}
+		if (!resp.success()) {
+			throw new SecurityException("Error removing credits.");
+		}
+		System.out.println("Credits removed from balance: " + credits);
 	}
 
 	private void writeCredits(int credits) {
@@ -173,15 +204,15 @@ public class SupermarketTerminal {
 		}
 		byte[] creditsData = Formatter.toByteArray(credits);
 		creditsData = crypto.sign(creditsData, privKey);
-		Response resp = com.sendCommand(CONSTANTS.INS_WRITE_CREDITS,
+		Response resp = com.sendCommand(CONSTANTS.INS_BAL_INC,
 				creditsData);
 		if (resp == null) {
-			throw new SecurityException("Cannot write mileage, card removed.");
+			throw new SecurityException("Cannot add credits, card removed.");
 		}
 		if (!resp.success()) {
-			throw new SecurityException("Error writing mileage data.");
+			throw new SecurityException("Error adding credits.");
 		}
-		System.out.println("Mileage written to card: " + credits);
+		System.out.println("Credits added to balance: " + credits);
 	}
 
 	/**
