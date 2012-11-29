@@ -17,7 +17,7 @@ public class AppletSession {
 	private TerminalCrypto crypto;
 	private AppletCommunication com;
 	
-	private RSAPublicKey pubKeyOverhead;
+	private RSAPublicKey pubKeySupermarket;
 	private RSAPublicKey pubKeyCard;
 	private RSAPrivateKey privKey;
 	
@@ -27,9 +27,9 @@ public class AppletSession {
 	private byte[] sessionKey;
 	private boolean authenticationSuccess;
 	
-	public AppletSession(RSAPublicKey pubKeyOverhead, RSAPrivateKey privKey,
+	public AppletSession(RSAPublicKey pubKeySupermarket, RSAPrivateKey privKey,
 			int terminalId) {
-		this.pubKeyOverhead = pubKeyOverhead;
+		this.pubKeySupermarket = pubKeySupermarket;
 		this.terminalId = terminalId;
 		this.privKey = privKey;
 		this.crypto = new TerminalCrypto();
@@ -149,7 +149,7 @@ public class AppletSession {
 						+ CONSTANTS.RSA_SIGNED_PUBKEY_LENGTH);
 
 		try {
-			data = crypto.verify(cert, pubKeyOverhead);
+			data = crypto.verify(cert, pubKeySupermarket);
 		} catch (SignatureException e) {
 			throw new SecurityException();
 		}

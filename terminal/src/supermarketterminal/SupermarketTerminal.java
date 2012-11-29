@@ -94,10 +94,96 @@ public class SupermarketTerminal {
 		
 		System.out.println("Succesfully authenticated card " + cardId);
 		
-		int input = Integer.parseInt(CLI.prompt("1: add credits to card | 2: ... "));
+		mainmenu: while (true) {
+			String command = "0";
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				System.err.println("Please do not interupt me!");
+			}
+			
+			command = CLI.prompt("1: add credits to card | " +
+					"2: remove credits from card | 9: exit \n");
+			
+			if (Integer.parseInt(command) == 1) {
+				String addcredits = "";
+				
+				while (true) {
+					String correct = "";
+					addcredits = CLI.prompt("Please enter the amount of" +
+							"credits to be added to the customer's card: ");
+					
+					CLI.showln("Credits to be added: " + addcredits);
+					while (!correct.equals("N") && !correct.equals("Y")
+							&& !correct.equals("C")) {
+						correct = CLI
+								.prompt("Is this correct? (Y)es/(N)o/(C)ancel: ");
+					}
+		
+					if (correct.equals("C")) {
+						continue mainmenu;
+					} else if (correct.equals("Y")) {
+						break;
+					}
+				}
+				
+				writeCredits(Integer.parseInt(addcredits));
+			} else if (Integer.parseInt(command) == 2) {
+				String removecredits = "";
+				
+				while (true) {
+					String correct = "";
+					removecredits = CLI.prompt("Please enter the amount of" +
+							"credits to be removed from the customer's card: ");
+					
+					CLI.showln("Credits to be removed: " + removecredits);
+					while (!correct.equals("N") && !correct.equals("Y")
+							&& !correct.equals("C")) {
+						correct = CLI
+								.prompt("Is this correct? (Y)es/(N)o/(C)ancel: ");
+					}
+		
+					if (correct.equals("C")) {
+						continue mainmenu;
+					} else if (correct.equals("Y")) {
+						break;
+					}
+				}
+				
+				removeCredits(Integer.parseInt(removecredits));
+			}
+			else if (Integer.parseInt(command) == 9) {
+				/* Exit program */
+				break;
+			} else {
+				System.err.println("Incorrect command entered.");
+			}
+		}
 		
 	}
 	
+	private void removeCredits(int credits) {
+		writeCredits(-credits); //TODO: needs to be checked for negative balance
+	}
+
+	private void writeCredits(int credits) {
+		if (!session.isAuthenticated()) {
+			throw new SecurityException(
+					"Cannot add credits, card not authenticated.");
+		}
+		byte[] creditsData = Formatter.toByteArray(credits);
+		creditsData = crypto.sign(creditsData, privKey);
+		Response resp = com.sendCommand(CONSTANTS.INS_WRITE_CREDITS,
+				creditsData);
+		if (resp == null) {
+			throw new SecurityException("Cannot write mileage, card removed.");
+		}
+		if (!resp.success()) {
+			throw new SecurityException("Error writing mileage data.");
+		}
+		System.out.println("Mileage written to card: " + credits);
+	}
+
 	/**
 	 * Waits for the user to press any key
 	 */

@@ -21,16 +21,9 @@ public class CONSTANTS {
 	public static final byte P2_AUTHENTICATE_STEP1 = (byte) 0x01;
 	public static final byte P2_AUTHENTICATE_STEP2 = (byte) 0x02;
 
-	/* Car issuance APDUs */
-	// public static final byte INS_RENT_CAR = (byte) 0x0B;
-
-	/* Car return APDUs */
-	// public static final byte INS_RETURN_CAR = (byte) 0x0A;
-	// public static final byte INS_GET_CREDITS = (byte) 0x0C;
-
-	/* Car driving APDUs */
-	// public static final byte INS_SET_TEAR = (byte) 0x0D;
-	// public static final byte INS_WRITE_CREDITS = (byte) 0x0E;
+	/* Credit-related APDUs */
+	public static final byte INS_GET_CREDITS = (byte) 0x0C;	
+	public static final byte INS_WRITE_CREDITS = (byte) 0x0E;
 
 	/* Card issuance APDUs */
 	public static final byte INS_ISSUE = (byte) 0x0A;
