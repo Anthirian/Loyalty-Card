@@ -59,13 +59,13 @@ public final class Crypto {
 	 *            The card to link the cryptographic functions to.
 	 */
 	public Crypto(Card card) {
-		pubKeyCompany = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_1024, false);
+		pubKeyCompany = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
 		pubKeyCompany.setExponent(SupermarketRSAKey.getExponent(), (short) 0, (short) SupermarketRSAKey.getExponent().length);
 		pubKeyCompany.setModulus(SupermarketRSAKey.getModulus(), (short) 0, (short) SupermarketRSAKey.getModulus().length);
 
-		pubKeyCar = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_1024, false);
+		pubKeyCar = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
 
-		privKeyCard = (RSAPrivateCrtKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_CRT_PRIVATE, KeyBuilder.LENGTH_RSA_1024, false);
+		privKeyCard = (RSAPrivateCrtKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_CRT_PRIVATE, KeyBuilder.LENGTH_RSA_512, false);
 		pubKeyCard = new byte[CONSTANTS.RSA_SIGNED_PUBKEY_LENGTH];
 
 		sessionKey = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES_TRANSIENT_DESELECT, KeyBuilder.LENGTH_AES_128, false);
@@ -250,14 +250,16 @@ public final class Crypto {
 	private void generateSessionKey() {
 		fillRandom(tmpKey);
 		sessionKey.setKey(tmpKey, (short) 0);
-		
+
 		// Clear the temporary buffer holding the key.
 		Util.arrayFillNonAtomic(tmpKey, (short) 0, (short) tmpKey.length, (byte) 0);
 	}
 
 	/**
 	 * Generates a nonce for use during authentication.
-	 * @param buf the buffer in which to store the nonce.
+	 * 
+	 * @param buf
+	 *            the buffer in which to store the nonce.
 	 */
 	private void generateNonce(byte[] buf) {
 		fillRandom(buf);
@@ -381,6 +383,20 @@ public final class Crypto {
 	 */
 	boolean authenticated() {
 		return authState[0] == 1;
+	}
+
+	/**
+	 * Retrieves <code>this</code> card's public key to use for encryption.
+	 * 
+	 * @return <code>this</code> card's public key.
+	 */
+	public Key getCardKey() {
+		if (pubKeyCar.isInitialized()) {
+			return pubKeyCar;
+		} else {
+			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_AUTH_PARTNER_KEY_NOT_INIT);
+			return null;
+		}
 	}
 
 	/**
