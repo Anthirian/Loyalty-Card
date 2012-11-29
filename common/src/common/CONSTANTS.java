@@ -18,6 +18,7 @@ public class CONSTANTS {
 	public static final byte INS_AUTHENTICATE = (byte) 0x09;
 	public static final byte P1_AUTHENTICATE_OFFICE = (byte) 0x01;
 	public static final byte P1_AUTHENTICATE_SUPERMARKET = (byte) 0x02;
+	public static final byte P1_AUTHENTICATE_CARD = (byte) 0x03;
 	public static final byte P2_AUTHENTICATE_STEP1 = (byte) 0x01;
 	public static final byte P2_AUTHENTICATE_STEP2 = (byte) 0x02;
 
@@ -39,8 +40,7 @@ public class CONSTANTS {
 
 	/* Success codes, as defined by ISO 7816, 5.1.3 */
 	public static final byte SW1_SUCCESS = (byte) 0x90;
-	public static final byte SW1_MORE_DATA_AVAILABLE_00 = (byte) 0x61; // DO NOT
-	// USE
+	public static final byte SW1_MORE_DATA_AVAILABLE_00 = (byte) 0x61; // DO NOT USE
 	/*
 	 * Our self defined code to indicate further response data Use: ISOException.throwIt(((SW1_MORE_DATA << 8) & 0xff00) | SW2_MORE_DATA);
 	 */
@@ -65,9 +65,9 @@ public class CONSTANTS {
 	public static final byte SW1_NO_PRECISE_DIAGNOSIS = (byte) 0x6F;
 
 	/* Self-Defined */
-	public static final byte SW1_AUTH_EXCEPTION = (byte) 0xAA;
-	public static final byte SW1_CRYPTO_EXCEPTION = (byte) 0xCC;
-	public static final byte SW1_PERS_EXCEPTION = (byte) 0xDD;
+	public static final byte SW1_AUTH_EXCEPTION = (byte) 0xAE;
+	public static final byte SW1_CRYPTO_EXCEPTION = (byte) 0xCE;
+	public static final byte SW1_PERS_EXCEPTION = (byte) 0xDE;
 
 	/* Data transfer issues */
 	public static final byte SW2_LC_INCORRECT = (byte) 0x10;
@@ -105,13 +105,13 @@ public class CONSTANTS {
 	public static final byte SW2_MSG_CTR_OVERFLOW = (byte) 0xC6;
 
 	/* Personalization issues */
-	public static final byte SW2_PERS_ALREADY_DONE = (byte) 0xB0;
-	public static final byte SW2_PERS_INCORRECT_LEN = (byte) 0xB1;
-	public static final byte SW2_PERS_INVALID_SIG = (byte) 0xB2;
-	public static final byte SW2_PERS_INVALID_PUBSIG = (byte) 0xB3;
-	public static final byte SW2_PERS_NOT_PERSONALIZED = (byte) 0xB4;
-	public static final byte SW2_PERS_SUCCESS = (byte) 0xBB;
-
+	// public static final byte SW2_PERS_ALREADY_DONE = (byte) 0xB0;
+	// public static final byte SW2_PERS_INCORRECT_LEN = (byte) 0xB1;
+	// public static final byte SW2_PERS_INVALID_SIG = (byte) 0xB2; 
+	// public static final byte SW2_PERS_INVALID_PUBSIG = (byte) 0xB3; 
+	// public static final byte SW2_PERS_NOT_PERSONALIZED = (byte) 0xB4; 
+	// public static final byte SW2_PERS_SUCCESS = (byte) 0xBB;
+	
 	/* Renting issues */
 	public static final byte SW2_RENT_WRONG_LENGTH = (byte) 0xD0;
 	public static final byte SW2_RENT_ALREADY_RENTED = (byte) 0xD1;
@@ -174,16 +174,19 @@ public class CONSTANTS {
 	public static final short RENT_MSG_OFFSET_CERT = (short) (RENT_MSG_OFFSET_PUB_MOD + RSA_KEY_MOD_LENGTH);
 	public static final short RENT_MSG_LENGTH = (short) (RENT_MSG_OFFSET_CERT + CERT_LENGTH);
 
+	/* First message of the handshake */
 	public static final short AUTH_MSG_1_OFFSET_NA = (short) 0;
 	public static final short AUTH_MSG_1_OFFSET_ID = (short) (AUTH_MSG_1_OFFSET_NA + NONCE_LENGTH);
 	public static final short AUTH_MSG_1_OFFSET_SIGNED_PUBKEY = (short) (AUTH_MSG_1_OFFSET_NA + NONCE_LENGTH); // Not a bug.
 	public static final short AUTH_MSG_1_LENGTH = (short) (AUTH_MSG_1_OFFSET_SIGNED_PUBKEY + RSA_SIGNED_PUBKEY_LENGTH);
 
+	/* Second message of the handshake */
 	public static final short AUTH_MSG_2_OFFSET_NA = (short) 0;
 	public static final short AUTH_MSG_2_OFFSET_NB = (short) (AUTH_MSG_2_OFFSET_NA + NONCE_LENGTH);
 	public static final short AUTH_MSG_2_OFFSET_ID = (short) (AUTH_MSG_2_OFFSET_NB + NONCE_LENGTH);
 	public static final short AUTH_MSG_2_LENGTH = (short) (AUTH_MSG_2_OFFSET_ID + ID_LENGTH);
-
+	
+	/* Third message of the handshake */
 	public static final short AUTH_MSG_3_OFFSET_NB = (short) 0;
 	public static final short AUTH_MSG_3_OFFSET_CERT = (short) (AUTH_MSG_3_OFFSET_NB + NONCE_LENGTH);
 	public static final short AUTH_MSG_3_LENGTH = (short) (AUTH_MSG_3_OFFSET_CERT + CERT_LENGTH);

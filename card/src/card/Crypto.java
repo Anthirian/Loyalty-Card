@@ -283,8 +283,8 @@ public final class Crypto {
 	 * @param buf
 	 *            the buffer in which to store the nonce.
 	 */
-	private void generateNonce(byte[] buf) {
-		fillRandom(buf);
+	void generateCardNonce() {
+		fillRandom(cardNonce);
 	}
 
 	/**
@@ -406,7 +406,7 @@ public final class Crypto {
 	boolean authenticated() {
 		return authState[0] == 1;
 	}
-
+	
 	/**
 	 * Retrieves <code>this</code> card's public key to use for encryption.
 	 * 

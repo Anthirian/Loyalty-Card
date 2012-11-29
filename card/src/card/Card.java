@@ -107,7 +107,7 @@ public class Card extends Applet implements ISO7816 {
 			// If the card has been finalized it is ready for regular use
 			switch (ins) {
 			case CONSTANTS.INS_AUTHENTICATE:
-				handshake(apdu);
+				handshakeStepOne(apdu);
 				break;
 			case CONSTANTS.INS_BAL_INC:
 				if (read(apdu, tmp) == 2) {
@@ -222,20 +222,171 @@ public class Card extends Applet implements ISO7816 {
 		apdu.sendBytesLong(data, (short) 0, length);
 	}
 
+	short authenticate(byte to, byte step, short length, byte[] buffer) throws UserException {
+		short outLength = 0;
+
+		if (step != authState[AUTHSTATE_STEP] + 1) {
+			resetSession(buffer);
+			UserException.throwIt(CONSTANTS.SW2_AUTH_STEP_INCORRECT);
+			return 0;
+		}
+
+		try {
+			if (step == CONSTANTS.P2_AUTHENTICATE_STEP1) {
+				outLength = authStep1(to, length, buffer);
+			} else if (step == CONSTANTS.P2_AUTHENTICATE_STEP2) {
+				outLength = authStep2(to, length, buffer);
+			}
+		} catch (UserException e) {
+			resetSession(buffer);
+			UserException.throwIt(e.getReason());
+			return 0;
+		}
+
+		if (outLength == 0) {
+			resetSession(buffer);
+			UserException.throwIt((short) CONSTANTS.SW2_AUTH_OTHER_ERROR);
+			return 0;
+		} else {
+			authState[AUTHSTATE_STEP] = step;
+			authState[AUTHSTATE_PARTNER] = to;
+			return outLength;
+		}
+	}
+
+	private short authStep1(byte to, short length, byte[] buffer) throws UserException {
+		short encLength = 0;
+
+		if (to != CONSTANTS.P1_AUTHENTICATE_CARD && to != CONSTANTS.P1_AUTHENTICATE_OFFICE) {
+			reset();
+			Card.throwException(CONSTANTS.SW1_WRONG_PARAMETERS, CONSTANTS.SW2_AUTH_WRONG_PARTNER);
+			return (short) 0;
+		}
+
+		/* Always generate nonce. */
+		crypto.generateCardNonce();
+
+		crypto.getCardNonce(buffer, CONSTANTS.AUTH_MSG_1_OFFSET_NA);
+		crypto.getPubKeyCard(buffer, CONSTANTS.AUTH_MSG_1_OFFSET_SIGNED_PUBKEY);
+		
+		encLength = crypto.pubEncrypt(to, buffer, (short) 0, CONSTANTS.AUTH_MSG_1_LENGTH, buffer, (short) 0);
+
+		if (authState[AUTHSTATE_PARTNER] != 0) {
+			encLength = 0;
+		}
+
+		return encLength;
+	}
+
+	private short authStep2(byte to, short length, byte[] buffer) throws UserException {
+		length = crypto.pubDecrypt(buffer, (short) 0, length, buffer, (short) 0);
+
+		if (length != CONSTANTS.AUTH_MSG_2_LENGTH) {
+			reset();
+			Card.throwException(CONSTANTS.SW1_WRONG_LE_FIELD_00, CONSTANTS.SW2_AUTH_WRONG_2);
+			return 0;
+		}
+
+		Util.arrayCopyNonAtomic(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NB, crypto.getTermNonce(), (short) 0, CONSTANTS.NONCE_LENGTH);
+
+		if (!crypto.checkCardNonce(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NA)) {
+			reset();
+			UserException.throwIt((short) CONSTANTS.SW2_AUTH_WRONG_NONCE);
+			return 0;
+		}
+
+		if (authState[AUTHSTATE_PARTNER] != to) {
+			reset();
+			UserException.throwIt((short) CONSTANTS.SW2_AUTH_WRONG_PARTNER);
+			return 0;
+		}
+
+		if (to == CONSTANTS.P1_AUTHENTICATE_CAR) {
+			if (!crypto.checkCarID(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_ID)) {
+				reset();
+				UserException.throwIt((short) CONSTANTS.SW2_AUTH_WRONG_CARID);
+				return 0;
+			}
+		}
+
+		// Clear buffer before reuse.
+		clear(buffer);
+
+		// Build response.
+		Util.arrayCopyNonAtomic(crypto.getTermNonce(), (short) 0, buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NB, CONSTANTS.NONCE_LENGTH);
+		crypto.getCert(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_CERT);
+		// Util.arrayCopyNonAtomic(crypto.getCert(), (short) 0, buffer,
+		// CONSTANTS.AUTH_MSG_3_OFFSET_CERT, CONSTANTS.CERT_LENGTH);
+
+		length = crypto.pubEncrypt(to, buffer, (short) 0, CONSTANTS.AUTH_MSG_3_LENGTH, buffer, (short) 0);
+
+		if (length == 0) {
+			UserException.throwIt((short) CONSTANTS.SW2_AUTH_OTHER_ERROR);
+			return 0;
+		}
+
+		return length;
+	}
+
 	/**
-	 * Mutually authenticates this applet and the terminal using RSA
+	 * Note that we read the APDU here ourselves instead of in the process function
 	 * 
 	 * @param apdu
-	 *            The APDU containing the data for the handshake
-	 * @return <code>true</code> if <code>this</code> applet was authenticated successfully
 	 */
-	private void handshake(APDU apdu) {
-		// TODO Implement mutual authentication algorithm using RSA
+	private void handshakeStepOne(APDU apdu) {
+		// TODO Implement mutual authentication algorithm using RSA.
 
-		byte[] challenge = { (byte) 0xFF }; // empty
+		// Use P1 and P2 to determine which step is active.
 
-		// Encrypt this challenge
+		// ONE - Terminal side:
+		// --------------------
+		// 1. Send NAME_TERMINAL
+		// T -> C : T
+
+		// ONE - Card side:
+		// ----------------
+		// 1. decrypt with RSA
+		// 2. verify data field length is 1 and assume it contains NAME_TERMINAL
+		// ----------------
+		// TWO - Card side:
+		// ----------------
+		// 3. Generate nonce N_C
+		// 4. Concatenate CONSTANTS.NAME_CARD, CONSTANTS.NAME_TERMINAL and N_C into challenge1
+		// 5. Encrypt challenge1 with RSA and send
+		// C -> T : {C, T, N_C}pkT
+		byte[] nonce = null;
+		crypto.generateNonce(nonce);
+		byte from = (byte) 0xCC; // C for Card.
+		byte to = (byte) 0xAF; // Randomly chosen
+		byte[] challenge = null;
 		sendRSAEncrypted(crypto.getCompanyKey(), challenge, (short) challenge.length, apdu);
+
+		// TWO - Terminal side:
+		// --------------------
+		// 1. Decrypt with RSA
+		// 2. Retrieve decrypted_challenge[0] and store
+		// 3. Verify decrypted_challenge[1] == CONSTANTS.NAME_TERMINAL
+		// 4. Assume byte[] cardNonce = decrypted_challenge[1-len]
+		// ----------------------
+		// THREE - Terminal side:
+		// ----------------------
+		// 5. Generate nonce N_T
+		// 6. Concatenate CONSTANTS.NAME_TERMINAL, CONSTANTS.NAME_CARD, N_C and N_T into response1challenge2
+		// 7. Encrypt response1challenge2 with RSA and send:
+		// T -> C : {T, C, N_C, N_T}pkC
+
+		// THREE - Card side:
+		// ------------------
+		// 1. Decrypt with RSA
+		// 2. Verify NAME_TERMINAL (from step 1) == parameter 2
+		// 3. Verify parameter 3 == N_C (from step 2)
+		// 4. Store parameter 4 as terminalNonce
+		// -----------------
+		// FOUR - Card side:
+		// -----------------
+		// 5. Concatenate NAME_CARD, NAME_TERMINAL and terminalNonce into response2
+		// 6. Encrypt response2 with RSA and send:
+		// C -> T : {C, T, N_T}pkT
 	}
 
 	/**
