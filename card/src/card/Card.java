@@ -29,6 +29,10 @@ public class Card extends Applet implements ISO7816 {
 	byte[] authBuf;
 	byte[] authState;
 	byte[] authPartner;
+	/** Holds the card nonce generated during authentication step one. */
+	byte[] NC;
+	/** Holds the terminal nonce generated during authentication step two. */
+	byte[] NT;
 
 	/** The applet state (<code>INIT</code> or <code>ISSUED</code>). */
 	byte state;
@@ -44,6 +48,8 @@ public class Card extends Applet implements ISO7816 {
 			authBuf = JCSystem.makeTransientByteArray(CONSTANTS.DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT);
 			authState = JCSystem.makeTransientByteArray((short) 2, JCSystem.CLEAR_ON_DESELECT);
 			authPartner = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
+			NC = JCSystem.makeTransientByteArray(CONSTANTS.NONCE_LENGTH, JCSystem.CLEAR_ON_DESELECT); 
+			
 			// Set the state of the card to initialization to allow for key generation and uploading
 		} else {
 			state = CONSTANTS.STATE_INIT;
@@ -86,11 +92,11 @@ public class Card extends Applet implements ISO7816 {
 		// Prepare reponse
 		Util.setShort(buf, ISO7816.OFFSET_CLA, (short) 0); // Not 0
 		Util.setShort(buf, ISO7816.OFFSET_INS, (short) 0); // 0 supposedly indicates a response APDU
-		
+
 		// TODO Make more general function that decides on encryption based on auth status
 		// private void send(byte ins, byte[] data, short offset, APDU apdu) {}
 		// For now we only send challenge1 to the terminal
-		sendRSAEncrypted(crypto.getCompanyKey(), authBuf, responseSize, apdu);		
+		sendRSAEncrypted(crypto.getCompanyKey(), authBuf, responseSize, apdu);
 	}
 
 	/**
@@ -252,7 +258,7 @@ public class Card extends Applet implements ISO7816 {
 			if (step == CONSTANTS.P2_AUTHENTICATE_STEP1) {
 				outLength = authStep1(to, length, buffer);
 			} else if (step == CONSTANTS.P2_AUTHENTICATE_STEP2) {
-				outLength = authStep2(to, length, buffer);
+				outLength = authStep3(to, length, buffer);
 			}
 		} catch (UserException e) {
 			// resetSession(buffer);
@@ -277,7 +283,7 @@ public class Card extends Applet implements ISO7816 {
 	 * 1. T -> C : T<br />
 	 * 2. C -> T : {C, T, N_C}pkT<br />
 	 * <br />
-	 * <b>Note:</b> The <code>buffer</code> is reused to hold the ciphertext for step 2.
+	 * <b>Note:</b> The <code>buffer</code> is reused to hold the response for the next step.
 	 * 
 	 * @param to
 	 *            the partner to authenticate to.
@@ -299,22 +305,14 @@ public class Card extends Applet implements ISO7816 {
 			return (short) 0;
 		}
 
-		// Fill buffer: [ Nonce | Public Key of the Card ]
-		// Not needed in our step 1.
-		// crypto.generateCardNonce();
-		// crypto.getCardNonce(buffer, CONSTANTS.AUTH_MSG_1_OFFSET_NA);
-		// crypto.getPubKeyCard(buffer, CONSTANTS.AUTH_MSG_1_OFFSET_SIGNED_PUBKEY);
-
-		// encLength = crypto.pubEncrypt(to, buffer, (short) 0, CONSTANTS.AUTH_MSG_1_LENGTH, buffer, (short) 0);
-
 		// Decrypt the ciphertext from buffer
 		decLength = crypto.pubDecrypt(buffer, (short) 0, length, buffer, (short) 0);
 
-		// Buffer now contains the plaintext
-		// decLength is now the length of the plaintext
+		// Buffer now holds the plaintext
+		// decLength now holds the length of the plaintext
 
-		// Check that the plaintext only contains 1 byte (?) as we expect only an identification from the terminal (C -> T : T)
-		if (decLength != CONSTANTS.AUTH_MSG_1_DATA_SIZE) {
+		// Check that the plaintext only contains 1 byte as we expect only an identification from the terminal (C -> T : T)
+		if (decLength != CONSTANTS.NAME_LENGTH) {
 			reset();
 			Card.throwException(CONSTANTS.SW1_WRONG_LENGTH, CONSTANTS.SW2_AUTH_INCORRECT_MESSAGE_LENGTH);
 			return (short) 0;
@@ -328,7 +326,7 @@ public class Card extends Applet implements ISO7816 {
 
 		// if the length of the plaintext is correct, assume it to be the name of the terminal
 		// terminal has to send its name as defined in the constants
-		authPartner[CONSTANTS.AUTH_MSG_1_OFFSET_PARTNER_NAME] = buffer[0];
+		authPartner[CONSTANTS.AUTH_MSG_1_OFFSET_NAME_TERM] = buffer[0];
 
 		// flush the buffer to prepare for response
 		clear(buffer);
@@ -338,27 +336,91 @@ public class Card extends Applet implements ISO7816 {
 
 		// prepare the response (actually part of step 2)
 
-		// generate a nonce and store it in the buffer
-		crypto.generateCardNonce();
-		crypto.getCardNonce(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NA);
 		// Add this card's name
 		crypto.getCardName(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NAME_CARD);
 		// Add the previously found partner name
 		buffer[CONSTANTS.AUTH_MSG_2_OFFSET_NAME_TERM] = authPartner[0];
+		// generate a nonce and store it in the buffer
+		crypto.generateCardNonce();
+		crypto.getCardNonce(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NC);
+		// Also store the nonce locally for comparison in step 3
+		crypto.getCardNonce(NC, (short) 0);
 
-		// we now have challenge1 in the buffer (destined for the terminal)
-		return (short) buffer.length;
+		// buffer now holds challenge1 (destined for the terminal): [ C | T | N_C ]
+		return (short) CONSTANTS.AUTH_MSG_2_OFFSET_NAME_TERM + CONSTANTS.NAME_LENGTH;
 	}
 
-	private short authStep2(byte to, short length, byte[] buffer) throws UserException {
+	/**
+	 * Performs the third authentication step (2nd and 4th steps are performed by the terminal):<br />
+	 * 1. T -> C : {T, C, N_C, N_T}pkC<br />
+	 * 2. C -> T : {C, T, N_T}pkT<br />
+	 * 
+	 * <b>Note</b> The <code>buffer</code> is reused to hold the response data.
+	 * 
+	 * @param to
+	 *            the authentication partner.
+	 * @param length
+	 *            the length of the ciphertext in the buffer
+	 * @param buffer
+	 *            the buffer holding the ciphertext of the terminal's challenge.
+	 * @return the length of the response data.
+	 * @throws UserException
+	 */
+	private short authStep3(byte to, short length, byte[] buffer) throws UserException {
+		if (to != CONSTANTS.P1_AUTHENTICATE_CARD) { // "to" should be me (the card)
+			reset();
+			Card.throwException(CONSTANTS.SW1_WRONG_PARAMETERS, CONSTANTS.SW2_AUTH_WRONG_PARTNER);
+			return (short) 0;
+		} // I am the recipient, so continue
+		
+		// Decrypt the message
 		length = crypto.pubDecrypt(buffer, (short) 0, length, buffer, (short) 0);
 
-		if (length != CONSTANTS.AUTH_MSG_2_LENGTH) {
+		// if the length of the plaintext differs from the predetermined length, assume an error
+		if (length != CONSTANTS.AUTH_MSG_3_TOTAL_LENGTH) {
 			reset();
-			Card.throwException(CONSTANTS.SW1_WRONG_LE_FIELD_00, CONSTANTS.SW2_AUTH_WRONG_2);
+			throwException(CONSTANTS.SW1_WRONG_LE_FIELD_00, CONSTANTS.SW2_AUTH_WRONG_2);
 			return 0;
-		}
-
+		} // The length is correct
+		
+		// check for my name in the data, just to make sure
+		if (buffer[CONSTANTS.AUTH_MSG_3_OFFSET_NAME_TERM] != CONSTANTS.NAME_CARD) {
+			reset();
+			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_WRONG_PARTNER);
+			return 0;
+		} // the data contains my name
+		
+		// proceed to check the name of the terminal matches the one we found in step 1
+		// TODO This check currently fails, because authState[AUTH_PARTNER] was not initialized in step 1 
+		// Instead we initialized authPartner[0] with one byte representing the partner
+		if (authState[AUTH_PARTNER] != buffer[CONSTANTS.AUTH_MSG_3_OFFSET_NAME_TERM]) {
+			reset();
+			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_WRONG_PARTNER);
+			return 0;
+		} // the data contains the same terminal name as we found in step 1
+		
+		// Check if the challenge has been solved by comparing the received nonce with the one from step 1
+		if (Util.arrayCompare(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NC, NC, (short) 0, CONSTANTS.NONCE_LENGTH) != 0) {
+			reset();
+			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_WRONG_NONCE);
+			return 0;
+		} // the nonce was verified successfully
+		
+		// We can clear the nonce, as it is no longer needed
+		clear(NC);
+		
+		// Store the terminal nonce locally
+		Util.arrayCopyNonAtomic(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NT, NT, (short) 0, CONSTANTS.NONCE_LENGTH);
+		
+		// We have checked and received everything needed to build the response, so clear the buffer
+		clear(buffer);
+		
+		// TODO Prepare the response
+		
+		
+		
+		// Their version of step 2 is below
+		
 		Util.arrayCopyNonAtomic(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NB, crypto.getTermNonce(), (short) 0, CONSTANTS.NONCE_LENGTH);
 
 		if (!crypto.checkCardNonce(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NA)) {
@@ -373,7 +435,7 @@ public class Card extends Applet implements ISO7816 {
 			return 0;
 		}
 
-		if (to == CONSTANTS.P1_AUTHENTICATE_CAR) {
+		if (to == CONSTANTS.P1_AUTHENTICATE_CARD) {
 			if (!crypto.checkCarID(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_ID)) {
 				reset();
 				UserException.throwIt((short) CONSTANTS.SW2_AUTH_WRONG_CARID);
@@ -400,20 +462,18 @@ public class Card extends Applet implements ISO7816 {
 		return length;
 	}
 
-	private void handshakeStepOne(APDU apdu) {
-		// TODO Implement mutual authentication algorithm using RSA.
-
-		// Use P1 and P2 to determine which step is active.
-
+	private void handshakePseudoCode() {
+		// --------------------
 		// ONE - Terminal side:
 		// --------------------
 		// 1. Send NAME_TERMINAL
 		// T -> C : T
-
+		// ----------------
 		// ONE - Card side:
 		// ----------------
 		// 1. decrypt with RSA
 		// 2. verify data field length is 1 and assume it contains NAME_TERMINAL
+
 		// ----------------
 		// TWO - Card side:
 		// ----------------
@@ -421,12 +481,8 @@ public class Card extends Applet implements ISO7816 {
 		// 4. Concatenate CONSTANTS.NAME_CARD, CONSTANTS.NAME_TERMINAL and N_C into challenge1
 		// 5. Encrypt challenge1 with RSA and send
 		// C -> T : {C, T, N_C}pkT
-		crypto.generateCardNonce();
-		byte from = (byte) 0xCC; // C for Card.
-		byte to = (byte) 0xAF; // Randomly chosen
-		byte[] challenge = null;
-		sendRSAEncrypted(crypto.getCompanyKey(), challenge, (short) challenge.length, apdu);
 
+		// --------------------
 		// TWO - Terminal side:
 		// --------------------
 		// 1. Decrypt with RSA
@@ -441,6 +497,7 @@ public class Card extends Applet implements ISO7816 {
 		// 7. Encrypt response1challenge2 with RSA and send:
 		// T -> C : {T, C, N_C, N_T}pkC
 
+		// ------------------
 		// THREE - Card side:
 		// ------------------
 		// 1. Decrypt with RSA
@@ -450,9 +507,18 @@ public class Card extends Applet implements ISO7816 {
 		// -----------------
 		// FOUR - Card side:
 		// -----------------
-		// 5. Concatenate NAME_CARD, NAME_TERMINAL and terminalNonce into response2
-		// 6. Encrypt response2 with RSA and send:
-		// C -> T : {C, T, N_T}pkT
+		// 5. Generate a new AES-128 Session Key k
+		// 6. Concatenate NAME_CARD, NAME_TERMINAL, terminalNonce as well as the AES Session Key m into response2
+		// 7. Encrypt response2 with RSA and send:
+		// C -> T : {C, T, N_T, k}pkT
+
+		// ---------------------
+		// FOUR - Terminal side:
+		// ---------------------
+		// 1. Decrypt with RSA
+		// 2. Verify C and T match previous values
+		// 3. Verify N_T matches
+		// 4. Store m as the session key to use until the card disconnects
 	}
 
 	/**

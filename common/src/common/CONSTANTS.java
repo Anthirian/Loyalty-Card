@@ -1,8 +1,8 @@
 package common;
 
 /**
- * Class featuring all our static definitions and constants
- * used in other classes
+ * Class featuring all our static definitions and constants used in other classes
+ * 
  * @author Geert Smelt
  * @author Robin Oostrum
  */
@@ -14,8 +14,8 @@ public class CONSTANTS {
 
 	public static final byte NAME_TERMINAL = (byte) 0x84; // randomly chosen
 	public static final byte NAME_CARD = (byte) 0x29; // randomly chosen
-	public static final short NAME_LENGTH = (short) 1; 
-	
+	public static final short NAME_LENGTH = (short) 1;
+
 	/* APDU chaining APDUs */
 	public static final byte CLA_CHAIN_LAST_OR_NONE = (byte) 0x00;
 	public static final byte CLA_CHAIN_FIRST_OR_NEXT = (byte) 0x10;
@@ -118,11 +118,11 @@ public class CONSTANTS {
 	/* Personalization issues */
 	// public static final byte SW2_PERS_ALREADY_DONE = (byte) 0xB0;
 	// public static final byte SW2_PERS_INCORRECT_LEN = (byte) 0xB1;
-	// public static final byte SW2_PERS_INVALID_SIG = (byte) 0xB2; 
-	// public static final byte SW2_PERS_INVALID_PUBSIG = (byte) 0xB3; 
-	// public static final byte SW2_PERS_NOT_PERSONALIZED = (byte) 0xB4; 
+	// public static final byte SW2_PERS_INVALID_SIG = (byte) 0xB2;
+	// public static final byte SW2_PERS_INVALID_PUBSIG = (byte) 0xB3;
+	// public static final byte SW2_PERS_NOT_PERSONALIZED = (byte) 0xB4;
 	// public static final byte SW2_PERS_SUCCESS = (byte) 0xBB;
-	
+
 	/* Renting issues */
 	public static final byte SW2_RENT_WRONG_LENGTH = (byte) 0xD0;
 	public static final byte SW2_RENT_ALREADY_RENTED = (byte) 0xD1;
@@ -187,31 +187,56 @@ public class CONSTANTS {
 	public static final short RENT_MSG_LENGTH = (short) (RENT_MSG_OFFSET_CERT + CERT_LENGTH);
 
 	/* Their first message of the handshake */
-	public static final short AUTH_MSG_1_OFFSET_NA = (short) 0;
-	public static final short AUTH_MSG_1_OFFSET_ID = (short) (AUTH_MSG_1_OFFSET_NA + NONCE_LENGTH);
-	public static final short AUTH_MSG_1_OFFSET_SIGNED_PUBKEY = (short) (AUTH_MSG_1_OFFSET_NA + NONCE_LENGTH); // Not a bug.
-	public static final short AUTH_MSG_1_LENGTH = (short) (AUTH_MSG_1_OFFSET_SIGNED_PUBKEY + RSA_SIGNED_PUBKEY_LENGTH);
+	// public static final short AUTH_MSG_1_OFFSET_NA = (short) 0;
+	// public static final short AUTH_MSG_1_OFFSET_ID = (short) (AUTH_MSG_1_OFFSET_NA + NONCE_LENGTH);
+	// public static final short AUTH_MSG_1_OFFSET_SIGNED_PUBKEY = (short) (AUTH_MSG_1_OFFSET_NA + NONCE_LENGTH); // Not a bug.
+	// public static final short AUTH_MSG_1_LENGTH = (short) (AUTH_MSG_1_OFFSET_SIGNED_PUBKEY + RSA_SIGNED_PUBKEY_LENGTH);
 
-	/* Our first message of the handshake */
-	public static final short AUTH_MSG_1_OFFSET_PARTNER_NAME = (short) 0;
-	public static final short AUTH_MSG_1_DATA_SIZE = (short) 1;
-	public static final short AUTH_MSG_1_TOTAL_LENGTH = (short) (AUTH_MSG_1_OFFSET_PARTNER_NAME + AUTH_MSG_1_DATA_SIZE);
-	
-	/* Second message of the handshake */
-	public static final short AUTH_MSG_2_OFFSET_NA = (short) 0;
-	public static final short AUTH_MSG_2_OFFSET_NB = (short) (AUTH_MSG_2_OFFSET_NA + NONCE_LENGTH);
-	public static final short AUTH_MSG_2_OFFSET_ID = (short) (AUTH_MSG_2_OFFSET_NB + NONCE_LENGTH);
-	public static final short AUTH_MSG_2_LENGTH = (short) (AUTH_MSG_2_OFFSET_ID + ID_LENGTH);
+	// Our first message of the handshake
+	// Builds the following buffer: [ T ]
+	// Sent from the Terminal to the Card
+	public static final short AUTH_MSG_1_OFFSET_NAME_TERM = (short) 0;
+	public static final short AUTH_MSG_1_TOTAL_LENGTH = (short) (AUTH_MSG_1_OFFSET_NAME_TERM + NAME_LENGTH);
+
+	/* Their second message of the handshake */
+	// public static final short AUTH_MSG_2_OFFSET_NA = (short) 0;
+	// public static final short AUTH_MSG_2_OFFSET_NB = (short) (AUTH_MSG_2_OFFSET_NA + NONCE_LENGTH);
+	// public static final short AUTH_MSG_2_OFFSET_ID = (short) (AUTH_MSG_2_OFFSET_NB + NONCE_LENGTH);
+	// public static final short AUTH_MSG_2_LENGTH = (short) (AUTH_MSG_2_OFFSET_ID + ID_LENGTH);
+
+	// Our second message of the handshake
+	// Builds the following buffer: [ C | T | NC ]
+	// Sent from the Card to the Terminal
 	public static final short AUTH_MSG_2_OFFSET_NAME_CARD = (short) 0;
-	public static final short AUTH_MSG_2_OFFSET_NAME_TERM = AUTH_MSG_2_OFFSET_NAME_CARD + NAME_LENGTH;
-	
-	/* Third message of the handshake */
-	public static final short AUTH_MSG_3_OFFSET_NB = (short) 0;
-	public static final short AUTH_MSG_3_OFFSET_CERT = (short) (AUTH_MSG_3_OFFSET_NB + NONCE_LENGTH);
-	public static final short AUTH_MSG_3_LENGTH = (short) (AUTH_MSG_3_OFFSET_CERT + CERT_LENGTH);
+	public static final short AUTH_MSG_2_OFFSET_NAME_TERM = (short) (AUTH_MSG_2_OFFSET_NAME_CARD + NAME_LENGTH);
+	public static final short AUTH_MSG_2_OFFSET_NC = (short) (AUTH_MSG_2_OFFSET_NAME_TERM + NAME_LENGTH);
+	public static final short AUTH_MSG_2_TOTAL_LENGTH = (short) (AUTH_MSG_2_OFFSET_NC + NONCE_LENGTH);
+
+	/* Their third message of the handshake */
+	// public static final short AUTH_MSG_3_OFFSET_NB = (short) 0;
+	// public static final short AUTH_MSG_3_OFFSET_CERT = (short) (AUTH_MSG_3_OFFSET_NB + NONCE_LENGTH);
+	// public static final short AUTH_MSG_3_LENGTH = (short) (AUTH_MSG_3_OFFSET_CERT + CERT_LENGTH);
+
+	// Our third message of the handshake
+	// Builds the following buffer: [ T | C | N_C | N_T ]
+	// Sent from the Terminal to the Card
+	public static final short AUTH_MSG_3_OFFSET_NAME_CARD = (short) 0;
+	public static final short AUTH_MSG_3_OFFSET_NAME_TERM = (short) (AUTH_MSG_3_OFFSET_NAME_CARD + NAME_LENGTH);
+	public static final short AUTH_MSG_3_OFFSET_NC = (short) (AUTH_MSG_3_OFFSET_NAME_TERM + NONCE_LENGTH);
+	public static final short AUTH_MSG_3_OFFSET_NT = (short) (AUTH_MSG_3_OFFSET_NC + NONCE_LENGTH);
+	public static final short AUTH_MSG_3_TOTAL_LENGTH = (short) (AUTH_MSG_3_OFFSET_NT + NONCE_LENGTH);
+
+	// Our fourth message of the handshake
+	// Builds the following buffer: [ C | T | N_T | k ]
+	// Sent from the Card to the Terminal
+	public static final short AUTH_MSG_4_OFFSET_NAME_CARD = (short) 0;
+	public static final short AUTH_MSG_4_OFFSET_NAME_TERM = (short) (AUTH_MSG_4_OFFSET_NAME_CARD + NAME_LENGTH);
+	public static final short AUTH_MSG_4_OFFSET_NT = (short) (AUTH_MSG_4_OFFSET_NAME_TERM + NAME_LENGTH);
+	public static final short AUTH_MSG_4_OFFSET_SESSION_KEY = (short) (AUTH_MSG_4_OFFSET_NT + NONCE_LENGTH);
+	public static final short AUTH_MSG_4_TOTAL_LENGTH = (short) (AUTH_MSG_4_OFFSET_SESSION_KEY + AES_KEY_LENGTH);
 
 	public static final short CREDITS_MSG_OFFSET_VAL = (short) 0;
 	public static final short CREDITS_MSG_OFFSET_SIG = (short) (CREDITS_MSG_OFFSET_VAL + CREDITS_LENGTH);
 	public static final short CREDITS_MSG_LENGTH = (short) (CREDITS_MSG_OFFSET_SIG + RSA_SIGNATURE_LENGTH);
-	
+
 }
