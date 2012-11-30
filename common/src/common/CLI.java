@@ -7,11 +7,8 @@ import java.io.InputStreamReader;
 /**
  * Static functions to make command line interaction easier.
  * 
- * @author Pol Van Aubel (paubel@science.ru.nl)
- * @author Marlon Baeten (mbaeten@science.ru.nl)
- * @author Sjors Gielen (sgielen@science.ru.nl)
- * @author Robert Kleinpenning (rkleinpe@science.ru.nl)
- * @author Jille Timmermans (jilletim@science.ru.nl)
+ * @author Geert Smelt
+ * @author Robin Oostrum
  */
 public final class CLI {
 	private static BufferedReader in = new BufferedReader(

@@ -1,5 +1,11 @@
 package common;
 
+/**
+ * Class featuring all our static definitions and constants
+ * used in other classes
+ * @author Geert Smelt
+ * @author Robin Oostrum
+ */
 public class CONSTANTS {
 	public static final int KEY_SIZE = 512;
 	public static final int SEQNR_BYTESIZE = 4;

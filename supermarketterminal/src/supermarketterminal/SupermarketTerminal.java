@@ -21,6 +21,13 @@ import common.Formatter;
 import common.Response;
 import common.TerminalCrypto;
 
+
+/** 
+ * This class represents the terminal used at the
+ * cash register in the supermarket
+ * @author Geert Smelt
+ * @author	Robin Oostrum
+*/
 public class SupermarketTerminal {
 	
 	/** communication gateway */
@@ -81,6 +88,11 @@ public class SupermarketTerminal {
 		}
 	}
 	
+	/**
+ 	 * Terminal in the supermarket without a fancy GUI;
+	 * moreover, we assume the rest of the authentication
+	 * (a customer showing its ID card) happens correctly.
+	 */
 	private void main() {
 		// wait until a card is inserted
 		com.waitForCard();
@@ -164,6 +176,9 @@ public class SupermarketTerminal {
 		
 	}
 	
+	/**
+	 * Send the "check balance" instruction to the card
+	 */
 	private void getCredits() {
 		if (!session.isAuthenticated()) {
 			throw new SecurityException(
@@ -179,6 +194,9 @@ public class SupermarketTerminal {
 		System.out.println("Balance: " + resp.toString());
 	}
 
+	/**
+	 * Send the "decrease balance" instruction to the card
+	 */
 	private void removeCredits(int credits) {
 		if (!session.isAuthenticated()) {
 			throw new SecurityException(
@@ -197,6 +215,9 @@ public class SupermarketTerminal {
 		System.out.println("Credits removed from balance: " + credits);
 	}
 
+	/**
+	 * Send the "increase balance" instruction to the card
+	 */
 	private void writeCredits(int credits) {
 		if (!session.isAuthenticated()) {
 			throw new SecurityException(

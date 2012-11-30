@@ -13,7 +13,12 @@ import javax.smartcardio.CommandAPDU;
 import javax.smartcardio.ResponseAPDU;
 import javax.smartcardio.TerminalFactory;
 
-
+/**
+ * Class representing a communication channel between
+ * the card and a terminal
+ * @author Geert Smelt
+ * @author Robin Oostrum
+ */
 public class AppletCommunication {
 
 	static final byte[] APPLET_AID = { 0xB, 0x56, 0x56, 0x51, 0x23, 0x18 };

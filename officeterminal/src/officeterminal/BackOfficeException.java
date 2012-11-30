@@ -1,11 +1,8 @@
 package officeterminal;
 
 /**
- * @author Pol Van Aubel (paubel@science.ru.nl)
- * @author Marlon Baeten (mbaeten@science.ru.nl)
- * @author Sjors Gielen (sgielen@science.ru.nl)
- * @author Robert Kleinpenning (rkleinpe@science.ru.nl)
- * @author Jille Timmermans (jilletim@science.ru.nl)
+ * @author Geert Smelt
+ * @author Robin Oostrum
  */
 class BackOfficeException extends Exception {
 	private static final long serialVersionUID = -5544225503197643465L;
