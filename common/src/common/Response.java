@@ -2,6 +2,11 @@ package common;
 
 import java.util.Arrays;
 
+/**
+ * The class representing a response from the card
+ * @author Geert Smelt
+ * @author Robin Oostrum
+ */
 public class Response {
 	byte[] data;
 	byte sw1;

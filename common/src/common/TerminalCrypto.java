@@ -22,6 +22,11 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+/**
+ * The class handling all the crypto in the terminal
+ * @author Geert Smelt
+ * @author Robin Oostrum
+ */
 public class TerminalCrypto {
 
 	private Cipher RSACipher;

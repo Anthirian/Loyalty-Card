@@ -23,22 +23,17 @@ import common.Formatter;
 /**
  * Simulates the BackOffice.
  * 
- * @author Pol Van Aubel (paubel@science.ru.nl)
- * @author Marlon Baeten (mbaeten@science.ru.nl)
- * @author Sjors Gielen (sgielen@science.ru.nl)
- * @author Robert Kleinpenning (rkleinpe@science.ru.nl)
- * @author Jille Timmermans (jilletim@science.ru.nl)
+ * @author Geert Smelt
+ * @author Robin Oostrum
  */
 class BackOfficeSimulator implements BackOffice {
 	private Hashtable<Integer, Customer> customers;
 	private Hashtable<Integer, Card> cards;
-	//private Hashtable<Integer, Car> cars;
 	private KeyManager keymanager;
 	private TerminalCrypto crypto;
 	private KeyPair supermarketKeyPair;
 	private int lastCustomerId = 0;
 	private int lastCardId = 0;
-	//private int lastCarId = 0;
 	private static final String keyExtension = "supermarket";
 
 	public BackOfficeSimulator(String path) throws BackOfficeException {
@@ -87,11 +82,9 @@ class BackOfficeSimulator implements BackOffice {
 			}
 			customers = new Hashtable<Integer, Customer>();
 			cards = new Hashtable<Integer, Card>();
-			//cars = new Hashtable<Integer, Car>();
 			customers.put(0, new Customer("Robin Oostrum", 0));
 			lastCustomerId = 0;
 			lastCardId = 0;
-			//lastCarId = 0;
 			remoteSave();
 		}
 
@@ -114,10 +107,8 @@ class BackOfficeSimulator implements BackOffice {
 				+ " customers, and " + lastCardId + " cards.");
 		out.writeInt(lastCustomerId);
 		out.writeInt(lastCardId);
-		//out.writeInt(lastCarId);
 		out.writeObject(customers);
 		out.writeObject(cards);
-		//out.writeObject(cars);
 	}
 
 	// If this fails, we need to exit anyway, so we suppress these warnings.
@@ -138,65 +129,14 @@ class BackOfficeSimulator implements BackOffice {
 		ObjectInputStream in = new ObjectInputStream(fis);
 		lastCustomerId = in.readInt();
 		lastCardId = in.readInt();
-		//lastCarId = in.readInt();
 		customers = (Hashtable<Integer, Customer>) in.readObject();
 		cards = (Hashtable<Integer, Card>) in.readObject();
-		//cars = (Hashtable<Integer, Car>) in.readObject();
 	}
 
 	@Override
 	public KeyPair getSupermarketKeyPair() throws BackOfficeException {
 		return supermarketKeyPair;
 	}
-
-	/*
-	@Override
-	public int addNewCar(String name) throws BackOfficeException {
-		int carSeqId = ++lastCarId;
-
-		KeyPair keypair;
-		try {
-			keypair = keymanager.generateAndSave("Car_"
-					+ Integer.toString(carSeqId));
-		} catch (NoSuchAlgorithmException e) {
-			throw new BackOfficeException("Failed to generate a new car key", e);
-		} catch (IOException e) {
-			throw new BackOfficeException("Failed to generate a new car key", e);
-		}
-
-		try {
-			writeCarSequence(carSeqId, 0);
-		} catch (IOException e) {
-			throw new BackOfficeException("Failed to update car state", e);
-		}
-
-		Car car = new Car(name, carSeqId, (RSAPublicKey) keypair.getPublic());
-		cars.put(carSeqId, car);
-		remoteSave();
-
-		return carSeqId;
-	}
-
-	@Override
-	public Car getCarByID(int carId) throws BackOfficeException {
-		Car c = cars.get(carId);
-		if (c == null) {
-			return c;
-		}
-		return c.clone();
-	}
-
-	@Override
-	public void incrementCarSequenceNumber(int carId)
-			throws BackOfficeException {
-		Car c = cars.get(carId);
-		if (c == null) {
-			throw new BackOfficeException("No car with that ID");
-		}
-		c.incrementSequenceNumber();
-		remoteSave();
-	}
-	*/
 
 	@Override
 	public int getCardID(Customer client) throws BackOfficeException {
@@ -336,26 +276,4 @@ class BackOfficeSimulator implements BackOffice {
 			e.printStackTrace();
 		}
 	}
-
-	
-	/**
-	 * Write a new sequence number for given car ID.
-	 */
-	/*
-	private void writeCarSequence(int carID, int seq) throws IOException {
-		FileOutputStream csfh = new FileOutputStream("./keys/carseq_" + carID);
-		csfh.write(RentalFormatter.toByteArray(seq));
-		csfh.close();
-	}
-
-	@Override
-	public List<Car> getCars() {
-		ArrayList<Car> list = new ArrayList<Car>();
-		for (Enumeration<Car> e = cars.elements(); e.hasMoreElements();) {
-			Car c = e.nextElement();
-			list.add(c.clone());
-		}
-		return list;
-	}
-	*/
 }

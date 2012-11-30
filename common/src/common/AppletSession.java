@@ -11,7 +11,11 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.Arrays;
 
-
+/**
+ * Class representing a session between the card and the terminal
+ * @author Geert Smelt
+ * @author Robin Oostrum
+ */
 public class AppletSession {
 	
 	private TerminalCrypto crypto;
