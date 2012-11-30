@@ -6,6 +6,10 @@ public class CONSTANTS {
 	public static final byte STATE_INIT = 0;
 	public static final byte STATE_ISSUED = 1;
 
+	public static final byte NAME_TERMINAL = (byte) 0x84; // randomly chosen
+	public static final byte NAME_CARD = (byte) 0x29; // randomly chosen
+	public static final short NAME_LENGTH = (short) 1; 
+	
 	/* APDU chaining APDUs */
 	public static final byte CLA_CHAIN_LAST_OR_NONE = (byte) 0x00;
 	public static final byte CLA_CHAIN_FIRST_OR_NEXT = (byte) 0x10;
@@ -93,6 +97,7 @@ public class CONSTANTS {
 	public static final byte SW2_AUTH_PARTNER_KEY_NOT_INIT = (byte) 0xA6;
 	public static final byte SW2_NO_AUTH_PERFORMED = (byte) 0xA7;
 	public static final byte SW2_AUTH_ALREADY_PERFORMED = (byte) 0xA8;
+	public static final byte SW2_AUTH_INCORRECT_MESSAGE_LENGTH = (byte) 0xA9;
 
 	public static final byte SW2_SESSION_BROKEN = (byte) 0xC0;
 	public static final byte SW2_SESSION_WRONG_NONCE = (byte) 0xC1;
@@ -124,6 +129,7 @@ public class CONSTANTS {
 	public static final short APDU_DATA_SIZE_MAX = (short) 236;
 	public static final short APDU_MESSAGE_CRYPTO_OVERHEAD = (short) 3;
 	public static final short APDU_MESSAGE_SIZE_MAX = APDU_DATA_SIZE_MAX + APDU_MESSAGE_CRYPTO_OVERHEAD;
+	// TODO Change to 512?
 	public static final short DATA_SIZE_MAX = (short) 1024;
 
 	public static final short NONCE_LENGTH = (short) 8;
@@ -174,17 +180,24 @@ public class CONSTANTS {
 	public static final short RENT_MSG_OFFSET_CERT = (short) (RENT_MSG_OFFSET_PUB_MOD + RSA_KEY_MOD_LENGTH);
 	public static final short RENT_MSG_LENGTH = (short) (RENT_MSG_OFFSET_CERT + CERT_LENGTH);
 
-	/* First message of the handshake */
+	/* Their first message of the handshake */
 	public static final short AUTH_MSG_1_OFFSET_NA = (short) 0;
 	public static final short AUTH_MSG_1_OFFSET_ID = (short) (AUTH_MSG_1_OFFSET_NA + NONCE_LENGTH);
 	public static final short AUTH_MSG_1_OFFSET_SIGNED_PUBKEY = (short) (AUTH_MSG_1_OFFSET_NA + NONCE_LENGTH); // Not a bug.
 	public static final short AUTH_MSG_1_LENGTH = (short) (AUTH_MSG_1_OFFSET_SIGNED_PUBKEY + RSA_SIGNED_PUBKEY_LENGTH);
 
+	/* Our first message of the handshake */
+	public static final short AUTH_MSG_1_OFFSET_PARTNER_NAME = (short) 0;
+	public static final short AUTH_MSG_1_DATA_SIZE = (short) 1;
+	public static final short AUTH_MSG_1_TOTAL_LENGTH = (short) (AUTH_MSG_1_OFFSET_PARTNER_NAME + AUTH_MSG_1_DATA_SIZE);
+	
 	/* Second message of the handshake */
 	public static final short AUTH_MSG_2_OFFSET_NA = (short) 0;
 	public static final short AUTH_MSG_2_OFFSET_NB = (short) (AUTH_MSG_2_OFFSET_NA + NONCE_LENGTH);
 	public static final short AUTH_MSG_2_OFFSET_ID = (short) (AUTH_MSG_2_OFFSET_NB + NONCE_LENGTH);
 	public static final short AUTH_MSG_2_LENGTH = (short) (AUTH_MSG_2_OFFSET_ID + ID_LENGTH);
+	public static final short AUTH_MSG_2_OFFSET_NAME_CARD = (short) 0;
+	public static final short AUTH_MSG_2_OFFSET_NAME_TERM = AUTH_MSG_2_OFFSET_NAME_CARD + NAME_LENGTH;
 	
 	/* Third message of the handshake */
 	public static final short AUTH_MSG_3_OFFSET_NB = (short) 0;
@@ -194,4 +207,5 @@ public class CONSTANTS {
 	public static final short CREDITS_MSG_OFFSET_VAL = (short) 0;
 	public static final short CREDITS_MSG_OFFSET_SIG = (short) (CREDITS_MSG_OFFSET_VAL + CREDITS_LENGTH);
 	public static final short CREDITS_MSG_LENGTH = (short) (CREDITS_MSG_OFFSET_SIG + RSA_SIGNATURE_LENGTH);
+	
 }

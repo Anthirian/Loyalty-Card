@@ -279,9 +279,6 @@ public final class Crypto {
 
 	/**
 	 * Generates a nonce for use during authentication.
-	 * 
-	 * @param buf
-	 *            the buffer in which to store the nonce.
 	 */
 	void generateCardNonce() {
 		fillRandom(cardNonce);
@@ -406,7 +403,19 @@ public final class Crypto {
 	boolean authenticated() {
 		return authState[0] == 1;
 	}
+
+	void getCardName(byte[] buffer, short offset) {
+		buffer[CONSTANTS.AUTH_MSG_2_OFFSET_NAME_CARD + offset] = CONSTANTS.NAME_CARD;
+	}
 	
+	void getCardNonce(byte[] buffer, short offset) {
+		Util.arrayCopyNonAtomic(cardNonce, (short) 0, buffer, offset, CONSTANTS.NONCE_LENGTH);
+	}
+
+	void getPubKeyCard(byte[] buffer, short offset) {
+		Util.arrayCopyNonAtomic(pubKeyCard, (short) 0, buffer, offset, CONSTANTS.RSA_SIGNED_PUBKEY_LENGTH);
+	}
+
 	/**
 	 * Retrieves <code>this</code> card's public key to use for encryption.
 	 * 
