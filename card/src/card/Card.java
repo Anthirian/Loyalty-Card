@@ -87,7 +87,7 @@ public class Card extends Applet implements ISO7816 {
 		} catch (UserException e) {
 			throwException(e.getReason());
 		}
-		
+
 		// Ensure the buffer size is sufficient
 		if (responseSize > authBuf.length) {
 			reset();
@@ -132,22 +132,12 @@ public class Card extends Applet implements ISO7816 {
 				break;
 			case CONSTANTS.INS_BAL_INC:
 				responseSize = add(buf, length);
-				// if (read(apdu, tmp) == 2) {
-				// add(Util.makeShort(tmp[0], tmp[1]));
-				// } else {
-				// UserException.throwIt(CONSTANTS.SW2_CREDITS_WRONG_LENGTH);
-				// }
 				break;
 			case CONSTANTS.INS_BAL_DEC:
 				responseSize = subtract(buf, length);
-				// if (read(apdu, tmp) == 2) {
-				// this.spend(Util.makeShort(tmp[0], tmp[1]));
-				// } else {
-				// UserException.throwIt(CONSTANTS.SW2_CREDITS_WRONG_LENGTH);
-				// }
 				break;
 			case CONSTANTS.INS_BAL_CHECK:
-				checkCredits();
+				responseSize = checkCredits(buf);
 				break;
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
@@ -527,7 +517,8 @@ public class Card extends Applet implements ISO7816 {
 	 * Increments the balance of <code>this</code> card by a number of credits.
 	 * 
 	 * @param buffer
-	 *            the buffer holding the amount of (non-zero and non-negative) credits to add. Should <u>only</u> contain the amount.
+	 *            the buffer holding the amount of (non-zero and non-negative) credits to add. Should <u>only</u> contain the amount. Is overwritten with the
+	 *            new balance.
 	 * @param length
 	 *            the length of the amount in the buffer (must be 2 or an exception will be thrown).
 	 * @return length of the new balance in the buffer (2 if successful, 0 otherwise).
@@ -571,7 +562,8 @@ public class Card extends Applet implements ISO7816 {
 	 * Decrements the balance of <code>this</code> card by a number of credits.
 	 * 
 	 * @param buffer
-	 *            the buffer holding the amount of (non-zero and non-negative) credits to subtract. Should <u>only</u> contain the amount.
+	 *            the buffer holding the amount of (non-zero and non-negative) credits to subtract. Should <u>only</u> contain the amount. Is overwritten with
+	 *            the new balance.
 	 * @param length
 	 *            the length of the amount in the buffer (must be 2 or an exception will be thrown).
 	 * @return 1 if all went well, or 0 if an exception occurred.
@@ -612,17 +604,22 @@ public class Card extends Applet implements ISO7816 {
 	}
 
 	/**
-	 * Check the current balance of the card.
+	 * Checks the current balance on the card.
 	 * 
-	 * @return the current balance.
+	 * @param buffer
+	 *            the buffer to hold the amount in. Any data present in the buffer is ignored and overwritten upon retrieval.
+	 * @return
 	 */
-	private short checkCredits() {
+	private short checkCredits(byte[] buffer) {
+		short responseSize = 0;
 		if (crypto.authenticated()) {
-			return crypto.getBalance();
+			Util.setShort(buffer, (short) 0, crypto.getBalance());
+			responseSize = 2;
 		} else {
 			throwException(CONSTANTS.SW1_COMMAND_NOT_ALLOWED_00, CONSTANTS.SW2_NO_AUTH_PERFORMED);
 			return 0;
 		}
+		return responseSize;
 	}
 
 	/**
