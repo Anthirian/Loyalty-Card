@@ -148,7 +148,7 @@ public class CONSTANTS {
 	public static final short ID_LENGTH = (short) 4;
 	public static final short SEQ_LENGTH = (short) 4;
 	public static final short DATE_LENGTH = (short) 4;
-	public static final short CREDITS_LENGTH = (short) 4;
+	public static final short CREDITS_LENGTH = (short) 2;
 
 	// Only when using RSA 1024 bit and AES 128 bit, obviously.
 	public static final short AES_IV_LENGTH = (short) 16;

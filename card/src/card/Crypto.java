@@ -178,7 +178,7 @@ public final class Crypto {
 	}
 
 	short symDecrypt(byte[] ciphertext, short ctOff, short ctLen, byte[] plaintext, short ptOff) {
-		
+
 		// Only use symmetric encryption when authenticated
 		if (!authenticated()) {
 			c.reset();
@@ -190,7 +190,7 @@ public final class Crypto {
 
 		verifyBufferLength(ciphertext, ctOff, ctLen);
 		verifyBufferLength(plaintext, ptOff);
-		
+
 		if ((ctLen - ctOff) % 16 != 0) {
 			c.reset();
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_CIPHERTEXT_NOT_ALIGNED);
@@ -198,7 +198,7 @@ public final class Crypto {
 		}
 
 		// Assume all is well and continue decrypting
-		
+
 		short length = 0;
 		try {
 			aesCipher.init(sessionKey, Cipher.MODE_DECRYPT);
@@ -207,9 +207,9 @@ public final class Crypto {
 			c.reset();
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, (byte) ce.getReason());
 		}
-		
+
 		length = Util.getShort(plaintext, ptOff);
-		
+
 		// Shift out the length bytes and strip padding bytes.
 		Util.arrayCopyNonAtomic(plaintext, (short) (ptOff + 2), plaintext, ptOff, length);
 
@@ -376,7 +376,7 @@ public final class Crypto {
 	 * 
 	 * @param amount
 	 *            The amount of credits (>= 0) required for the purchase.
-	 * @return The new balance on the card.
+	 * @return 1 if all went well, 0 if an exception occurred.
 	 * @throws ISOException
 	 *             when the current balance is less than the amount that is being spent.
 	 */
@@ -385,8 +385,8 @@ public final class Crypto {
 			balance -= amount;
 		} else {
 			Card.throwException(CONSTANTS.SW1_WRONG_PARAMETERS, CONSTANTS.SW2_CREDITS_INSUFFICIENT);
+			return balance;
 		}
-
 		return balance;
 	}
 
@@ -395,7 +395,7 @@ public final class Crypto {
 	 * 
 	 * @param amount
 	 *            the amount by which to increase the balance.
-	 * @return the new balance after increase.
+	 * @return the new balance.
 	 * @throws ISOException
 	 *             when <code>amount</code> is negative.
 	 */

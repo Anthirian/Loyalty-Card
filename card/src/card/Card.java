@@ -1,8 +1,7 @@
 package card;
 
-import common.CONSTANTS;
-
 import javacard.framework.APDU;
+import javacard.framework.APDUException;
 import javacard.framework.Applet;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
@@ -11,6 +10,8 @@ import javacard.framework.TransactionException;
 import javacard.framework.UserException;
 import javacard.framework.Util;
 import javacard.security.Key;
+
+import common.CONSTANTS;
 
 /**
  * Java Card applet to be used for the Loyalty Card system
@@ -59,7 +60,7 @@ public class Card extends Applet implements ISO7816 {
 		new Card().register(bArray, (short) (bOffset + 1), bArray[bOffset]);
 	}
 
-	public void process(APDU apdu) {
+	public void process(APDU apdu) throws ISOException, APDUException {
 		// Ignore the CommandAPDU that selects this applet on the card
 		if (selectingApplet()) {
 			return;
@@ -79,12 +80,12 @@ public class Card extends Applet implements ISO7816 {
 			return;
 		}
 
-		short numberOfBytes = read(apdu, authBuf); // for now authBuf, should be changed
+		short numberOfBytes = read(apdu, authBuf); // TODO for now authBuf, should be changed
 
 		try {
 			responseSize = handleInstruction(cla, ins, p1, p2, numberOfBytes, authBuf);
 		} catch (UserException e) {
-			// TODO Auto-generated catch block
+			throwException(e.getReason());
 		}
 
 		// Prepare reponse
@@ -96,7 +97,7 @@ public class Card extends Applet implements ISO7816 {
 	}
 
 	/**
-	 * Handles the INStruction byte of an APDU and calls the corresponding functions.
+	 * Handles the INStruction byte of an APDU and calls the corresponding functions. TODO Fix JavaDoc
 	 * 
 	 * @param apdu
 	 *            the APDU to handle the instruction byte from.
@@ -106,7 +107,7 @@ public class Card extends Applet implements ISO7816 {
 	 * @throws UserException
 	 *             when the length of the amount of credits is longer than two bytes, i.e. not a short.
 	 */
-	private short handleInstruction(byte cla, byte ins, byte p1, byte p2, short bytes, byte[] buf) throws UserException {
+	private short handleInstruction(byte cla, byte ins, byte p1, byte p2, short length, byte[] buf) throws UserException {
 		short responseSize = 0;
 
 		switch (state) {
@@ -124,9 +125,10 @@ public class Card extends Applet implements ISO7816 {
 			// If the card has been finalized it is ready for regular use
 			switch (ins) {
 			case CONSTANTS.INS_AUTHENTICATE:
-				responseSize = authenticate(p1, p2, bytes, buf);
+				responseSize = authenticate(p1, p2, length, buf);
 				break;
 			case CONSTANTS.INS_BAL_INC:
+				responseSize = add(buf, length);
 				// if (read(apdu, tmp) == 2) {
 				// add(Util.makeShort(tmp[0], tmp[1]));
 				// } else {
@@ -134,6 +136,7 @@ public class Card extends Applet implements ISO7816 {
 				// }
 				break;
 			case CONSTANTS.INS_BAL_DEC:
+				responseSize = subtract(buf, length);
 				// if (read(apdu, tmp) == 2) {
 				// this.spend(Util.makeShort(tmp[0], tmp[1]));
 				// } else {
@@ -520,50 +523,89 @@ public class Card extends Applet implements ISO7816 {
 	/**
 	 * Increments the balance of <code>this</code> card by a number of credits.
 	 * 
-	 * @param amount
-	 *            the amount of (non-zero and non-negative) credits to add.
-	 * @return the new balance, or 0 if an exception occurred.
+	 * @param buffer
+	 *            the buffer holding the amount of (non-zero and non-negative) credits to add. Should <u>only</u> contain the amount.
+	 * @param length
+	 *            the length of the amount in the buffer (must be 2 or an exception will be thrown).
+	 * @return length of the new balance in the buffer (2 if successful, 0 otherwise).
 	 * @throws UserException
-	 *             if the amount of credits to add is <= 0, or if a balance change operation is already in progress.
+	 *             <ul>
+	 *             <li>if the length of the amount in <code>buffer</code> is not 2.</li>
+	 *             <li>if the amount of credits to add is <= 0.</li>
+	 *             <li>if a balance change operation is already in progress.</li>
+	 *             </ul>
 	 */
-	private short add(short amount) throws UserException {
-		short newBalance = 0;
+	private short add(byte[] buffer, short length) throws UserException {
+		short responseSize = 0;
+
+		// Verify buffer length
+		if (length != CONSTANTS.CREDITS_LENGTH) {
+			UserException.throwIt((short) CONSTANTS.SW2_CREDITS_WRONG_LENGTH);
+			return 0;
+		}
+
+		// Find the amount
+		short amount = Util.getShort(buffer, (short) 0);
+
+		// Change the balance by amount
 		try {
 			JCSystem.beginTransaction();
-			newBalance = crypto.gain(amount);
+			Util.setShort(buffer, (short) 0, crypto.gain(amount));
+			responseSize = 2;
 			JCSystem.commitTransaction();
 		} catch (ISOException ie) {
 			UserException.throwIt((short) CONSTANTS.SW2_CREDITS_NEGATIVE);
-
+			return 0;
 		} catch (TransactionException te) {
 			UserException.throwIt(CONSTANTS.SW2_INTERNAL_ERROR);
+			return 0;
 		}
 
-		return newBalance;
+		return responseSize;
 	}
 
 	/**
 	 * Decrements the balance of <code>this</code> card by a number of credits.
 	 * 
-	 * @param amount
-	 *            the amount of (non-zero and non-negative) credits to subtract.
-	 * @return the new balance.
+	 * @param buffer
+	 *            the buffer holding the amount of (non-zero and non-negative) credits to subtract. Should <u>only</u> contain the amount.
+	 * @param length
+	 *            the length of the amount in the buffer (must be 2 or an exception will be thrown).
+	 * @return 1 if all went well, or 0 if an exception occurred.
 	 * @throws UserException
-	 *             if the amount of credits to add is <=0, or if a balance change operation is already in progress.
+	 *             <ul>
+	 *             <li>if the amount of credits to add is <= 0.</li>
+	 *             <li>if the length of the amount in <code>buffer</code> is not 2.</li>
+	 *             <li>if a balance change operation is already in progress.</li>
+	 *             </ul>
 	 */
-	private short spend(short amount) throws UserException {
-		short newBalance = 0;
+	private short subtract(byte[] buffer, short length) throws UserException {
+		short responseSize = 0;
+
+		// Verify buffer length
+		if (length != CONSTANTS.CREDITS_LENGTH) {
+			UserException.throwIt((short) CONSTANTS.SW2_CREDITS_WRONG_LENGTH);
+			return 0;
+		}
+
+		// Find the amount
+		short amount = Util.getShort(buffer, (short) 0);
+
+		// Change the balance by amount
 		try {
 			JCSystem.beginTransaction();
-			newBalance = crypto.spend(amount);
+			Util.setShort(buffer, (short) 0, crypto.spend(amount));
+			responseSize = 2;
 			JCSystem.commitTransaction();
 		} catch (ISOException ie) {
 			UserException.throwIt((short) CONSTANTS.SW2_CREDITS_NEGATIVE);
-
+			return 0;
 		} catch (TransactionException te) {
 			UserException.throwIt(CONSTANTS.SW2_INTERNAL_ERROR);
+			return 0;
 		}
-		return newBalance;
+
+		return responseSize;
 	}
 
 	/**
