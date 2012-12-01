@@ -34,7 +34,7 @@ public class Card extends Applet implements ISO7816 {
 	byte[] NT;
 
 	/** The applet state (<code>INIT</code> or <code>ISSUED</code>). */
-	protected byte state;
+	byte state;
 
 	/** The cryptograhy object. Handles all encryption and decryption and also stores the current balance of the card */
 	Crypto crypto;

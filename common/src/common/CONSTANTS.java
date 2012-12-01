@@ -121,6 +121,7 @@ public class CONSTANTS {
 	public static final byte SW2_UNSUPPORTED_CRYPTO_MODE = (byte) 0xC7;
 
 	/* Personalization issues */
+	public static final byte SW2_ALREADY_ISSUED = (byte) 0xB0;
 	// public static final byte SW2_PERS_ALREADY_DONE = (byte) 0xB0;
 	// public static final byte SW2_PERS_INCORRECT_LEN = (byte) 0xB1;
 	// public static final byte SW2_PERS_INVALID_SIG = (byte) 0xB2;

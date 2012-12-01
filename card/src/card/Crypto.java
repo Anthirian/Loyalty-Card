@@ -1,6 +1,6 @@
 package card;
 
-import javacard.framework.CardRuntimeException;
+import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
 import javacard.framework.Util;
 import javacard.security.AESKey;
@@ -8,10 +8,10 @@ import javacard.security.CryptoException;
 import javacard.security.Key;
 import javacard.security.KeyBuilder;
 import javacard.security.RSAPrivateCrtKey;
-import javacard.security.RandomData;
 import javacard.security.RSAPublicKey;
-import javacardx.crypto.Cipher;
+import javacard.security.RandomData;
 import javacard.security.Signature;
+import javacardx.crypto.Cipher;
 
 import common.CONSTANTS;
 
@@ -28,10 +28,8 @@ public final class Crypto {
 
 	private RandomData random;
 	private byte[] cardNonce;
-	private byte[] termNonce;
 	private byte[] tmpKey;
 	private AESKey sessionKey;
-	private AESKey messageKey;
 
 	private byte[] pubKeyCard;
 	private RSAPrivateCrtKey privKeyCard;
@@ -42,9 +40,6 @@ public final class Crypto {
 
 	/** The state of authentication of this card, an array of size one */
 	private byte[] authState;
-
-	private byte[] cert;
-	private byte[] carID;
 
 	/** The balance of the loyalty card. A <code>short</code> because we assume a maximum of 25000 pts, which is < 2^15 - 1 */
 	private short balance;
@@ -69,22 +64,17 @@ public final class Crypto {
 		pubKeyCard = new byte[CONSTANTS.RSA_SIGNED_PUBKEY_LENGTH];
 
 		sessionKey = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES_TRANSIENT_DESELECT, KeyBuilder.LENGTH_AES_128, false);
-		messageKey = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES_TRANSIENT_DESELECT, KeyBuilder.LENGTH_AES_128, false);
 
 		rsaCipher = Cipher.getInstance(Cipher.ALG_RSA_PKCS1, false);
 		aesCipher = Cipher.getInstance(Cipher.ALG_AES_BLOCK_128_CBC_NOPAD, false);
 		rsaSignature = Signature.getInstance(Signature.ALG_RSA_SHA_PKCS1, false);
 
 		cardNonce = JCSystem.makeTransientByteArray(CONSTANTS.NONCE_LENGTH, JCSystem.CLEAR_ON_DESELECT);
-		termNonce = JCSystem.makeTransientByteArray(CONSTANTS.NONCE_LENGTH, JCSystem.CLEAR_ON_DESELECT);
 		tmpKey = JCSystem.makeTransientByteArray(CONSTANTS.AES_KEY_LENGTH, JCSystem.CLEAR_ON_DESELECT);
 
 		random = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
 
 		authState = JCSystem.makeTransientByteArray((short) 0, JCSystem.CLEAR_ON_DESELECT);
-
-		cert = new byte[CONSTANTS.CERT_LENGTH];
-		carID = new byte[CONSTANTS.ID_LENGTH];
 
 		balance = (short) 0;
 
@@ -92,6 +82,7 @@ public final class Crypto {
 	}
 
 	boolean checkSignature() {
+		// TODO Check a signature
 		return false;
 	}
 
@@ -188,7 +179,7 @@ public final class Crypto {
 
 	short symDecrypt(byte[] ciphertext, short ctOff, short ctLen, byte[] plaintext, short ptOff) {
 		// TODO AES Decryption not finished yet
-
+		
 		short length = 0;
 		try {
 			aesCipher.init(sessionKey, Cipher.MODE_DECRYPT);
@@ -294,7 +285,7 @@ public final class Crypto {
 	 * @return <code>true</code> if the nonces match.<br />
 	 *         <code>false</code> if the nonces do not match.
 	 */
-	protected boolean checkCardNonce(byte[] buffer, short offset) {
+	boolean checkCardNonce(byte[] buffer, short offset) {
 		return Util.arrayCompare(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NC, cardNonce, (short) 0, CONSTANTS.NONCE_LENGTH) != 0;
 	}
 
@@ -317,7 +308,7 @@ public final class Crypto {
 		// messageKey.clearKey();
 		Util.arrayFillNonAtomic(tmpKey, (short) 0, (short) tmpKey.length, (byte) 0);
 		Util.arrayFillNonAtomic(cardNonce, (short) 0, (short) cardNonce.length, (byte) 0);
-		Util.arrayFillNonAtomic(termNonce, (short) 0, (short) termNonce.length, (byte) 0);
+		// Util.arrayFillNonAtomic(termNonce, (short) 0, (short) termNonce.length, (byte) 0);
 		authState[0] = 0;
 	}
 
@@ -417,12 +408,18 @@ public final class Crypto {
 	boolean authenticated() {
 		return authState[0] == 1;
 	}
-	
-	protected void issueCard() {
-		if (authenticated()) {
+
+	/**
+	 * Changes the card to the <code>ISSUED</code> state.
+	 * 
+	 * @throws ISOException
+	 *             if the card has already been issued.
+	 */
+	void issueCard() {
+		if (c.state != CONSTANTS.STATE_ISSUED) {
 			c.state = CONSTANTS.STATE_ISSUED;
 		} else {
-			Card.throwException(CONSTANTS.SW1_COMMAND_NOT_ALLOWED_00, CONSTANTS.SW2_NO_AUTH_PERFORMED);
+			Card.throwException(CONSTANTS.SW1_COMMAND_NOT_ALLOWED_00, CONSTANTS.SW2_ALREADY_ISSUED);
 		}
 	}
 
@@ -478,7 +475,7 @@ public final class Crypto {
 	 * @return the byte length of the key data returned (16, 24 or 36)
 	 * @see AESKey#getKey(byte[], short)
 	 */
-	protected short getSessionKey(byte[] buffer, short offset) {
+	short getSessionKey(byte[] buffer, short offset) {
 		short len = 0;
 		try {
 			len = sessionKey.getKey(buffer, offset);
