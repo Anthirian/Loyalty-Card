@@ -269,7 +269,7 @@ public final class Crypto {
 	/**
 	 * Generates the AES session key. This key is used until the card is removed from the terminal.
 	 */
-	private void generateSessionKey() {
+	void generateSessionKey() {
 		fillRandom(tmpKey);
 		sessionKey.setKey(tmpKey, (short) 0);
 
@@ -285,9 +285,23 @@ public final class Crypto {
 	}
 
 	/**
+	 * Compares the nonce in <code>buffer</code> with the one stored internally in <code>cardNonce</code>.
+	 * 
+	 * @param buffer
+	 *            the buffer holding the nonce to be checked.
+	 * @param offset
+	 *            the offset in the buffer where the nonce is located.
+	 * @return <code>true</code> if the nonces match.<br />
+	 *         <code>false</code> if the nonces do not match.
+	 */
+	protected boolean checkCardNonce(byte[] buffer, short offset) {
+		return Util.arrayCompare(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NC, cardNonce, (short) 0, CONSTANTS.NONCE_LENGTH) != 0;
+	}
+
+	/**
 	 * Fill an entire buffer with random values.
 	 * 
-	 * @see {@link javacard.security.RandomData#generateData(byte[], short, short) generateData}
+	 * @see javacard.security.RandomData#generateData(byte[], short, short)
 	 * @param buf
 	 *            the buffer to be filled.
 	 */
@@ -300,7 +314,7 @@ public final class Crypto {
 	 */
 	void clearSessionData() {
 		sessionKey.clearKey();
-		messageKey.clearKey();
+		// messageKey.clearKey();
 		Util.arrayFillNonAtomic(tmpKey, (short) 0, (short) tmpKey.length, (byte) 0);
 		Util.arrayFillNonAtomic(cardNonce, (short) 0, (short) cardNonce.length, (byte) 0);
 		Util.arrayFillNonAtomic(termNonce, (short) 0, (short) termNonce.length, (byte) 0);
@@ -404,10 +418,26 @@ public final class Crypto {
 		return authState[0] == 1;
 	}
 
+	/**
+	 * Retrieves <code>this</code> card's name.
+	 * 
+	 * @param buffer
+	 *            the buffer to hold the card's name.
+	 * @param offset
+	 *            the offset in the buffer.
+	 */
 	void getCardName(byte[] buffer, short offset) {
-		buffer[CONSTANTS.AUTH_MSG_2_OFFSET_NAME_CARD + offset] = CONSTANTS.NAME_CARD;
+		buffer[offset] = CONSTANTS.NAME_CARD;
 	}
-	
+
+	/**
+	 * Retrieves <code>this</code> card's nonce. Must be initialized before retrieval.
+	 * 
+	 * @param buffer
+	 *            the buffer to hold the nonce.
+	 * @param offset
+	 *            the offset in the buffer.
+	 */
 	void getCardNonce(byte[] buffer, short offset) {
 		Util.arrayCopyNonAtomic(cardNonce, (short) 0, buffer, offset, CONSTANTS.NONCE_LENGTH);
 	}
@@ -431,13 +461,35 @@ public final class Crypto {
 	}
 
 	/**
+	 * Gets the session key
+	 * 
+	 * @param buffer
+	 *            the buffer to hold the key.
+	 * @param offset
+	 *            the offset in the buffer to place the key.
+	 * @return the byte length of the key data returned (16, 24 or 36)
+	 * @see AESKey#getKey(byte[], short)
+	 */
+	protected short getSessionKey(byte[] buffer, short offset) {
+		short len = 0;
+		try {
+			len = sessionKey.getKey(buffer, offset);
+		} catch (CryptoException ce) {
+			c.reset();
+			Card.throwException(CONSTANTS.SW1_SECURITY_RELATED_ISSUE_00, (byte) ce.getReason()); // key not init
+			return 0;
+		}
+		return len;
+	}
+
+	/**
 	 * Retrieves the supermarket's public key to use for encryption.
 	 * 
 	 * @return the supermarket's public key.
 	 * @throws ISOException
 	 *             if the supermarket's public key is not initialized yet.
 	 */
-	Key getCompanyKey() {
+	RSAPublicKey getCompanyKey() {
 		if (pubKeyCompany.isInitialized()) {
 			return pubKeyCompany;
 		} else {

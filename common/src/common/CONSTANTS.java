@@ -12,10 +12,13 @@ public class CONSTANTS {
 	public static final byte STATE_INIT = 0;
 	public static final byte STATE_ISSUED = 1;
 
-	public static final byte NAME_TERMINAL = (byte) 0x84; // randomly chosen
+	public static final byte NAME_TERM = (byte) 0x84; // randomly chosen
 	public static final byte NAME_CARD = (byte) 0x29; // randomly chosen
 	public static final short NAME_LENGTH = (short) 1;
 
+	public static final byte CRYPTO_TYPE_SYMMETRIC = (byte) 0xC8;
+	public static final byte CRYPTO_TYPE_ASYMMETRIC = (byte) 0xC9;
+	
 	/* APDU chaining APDUs */
 	public static final byte CLA_CHAIN_LAST_OR_NONE = (byte) 0x00;
 	public static final byte CLA_CHAIN_FIRST_OR_NEXT = (byte) 0x10;
@@ -114,6 +117,8 @@ public class CONSTANTS {
 	public static final byte SW2_CIPHERTEXT_NOT_ALIGNED = (byte) 0xC5;
 
 	public static final byte SW2_MSG_CTR_OVERFLOW = (byte) 0xC6;
+	
+	public static final byte SW2_UNSUPPORTED_CRYPTO_MODE = (byte) 0xC7;
 
 	/* Personalization issues */
 	// public static final byte SW2_PERS_ALREADY_DONE = (byte) 0xB0;
