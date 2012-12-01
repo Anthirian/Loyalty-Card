@@ -34,7 +34,7 @@ public class Card extends Applet implements ISO7816 {
 	byte[] NT;
 
 	/** The applet state (<code>INIT</code> or <code>ISSUED</code>). */
-	byte state;
+	protected byte state;
 
 	/** The cryptograhy object. Handles all encryption and decryption and also stores the current balance of the card */
 	Crypto crypto;
@@ -90,15 +90,9 @@ public class Card extends Applet implements ISO7816 {
 		// Prepare reponse
 		Util.setShort(buf, ISO7816.OFFSET_CLA, (short) 0); // Not 0
 		Util.setShort(buf, ISO7816.OFFSET_INS, (short) 0); // 0 supposedly indicates a response APDU
-
-		// TODO Make more general function that decides on encryption based on auth status
-		// private void send(byte ins, byte[] data, short offset, APDU apdu) {}
-		// For now we only send challenge1 to the terminal
-		switch (ins) {
-		case CONSTANTS.INS_AUTHENTICATE:
-			send(ins, authBuf, responseSize, apdu);
-		}
-
+		
+		send(ins, authBuf, responseSize, apdu);
+		return;
 	}
 
 	/**
@@ -120,7 +114,7 @@ public class Card extends Applet implements ISO7816 {
 			// When initializing the only supported instruction is the issuance of the card
 			switch (ins) {
 			case CONSTANTS.INS_ISSUE:
-				state = CONSTANTS.STATE_INIT;
+				crypto.issueCard();
 				break;
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
@@ -440,8 +434,7 @@ public class Card extends Applet implements ISO7816 {
 		// We have checked and received everything needed to build the response, so clear the buffer
 		clear(buffer);
 
-		// TODO Prepare the response
-		// {C, T, N_T, k}pkT
+		// Prepare the response
 
 		// Add both parties to the response
 		buffer[CONSTANTS.AUTH_MSG_4_OFFSET_NAME_CARD] = CONSTANTS.NAME_CARD;

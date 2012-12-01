@@ -417,6 +417,14 @@ public final class Crypto {
 	boolean authenticated() {
 		return authState[0] == 1;
 	}
+	
+	protected void issueCard() {
+		if (authenticated()) {
+			c.state = CONSTANTS.STATE_ISSUED;
+		} else {
+			Card.throwException(CONSTANTS.SW1_COMMAND_NOT_ALLOWED_00, CONSTANTS.SW2_NO_AUTH_PERFORMED);
+		}
+	}
 
 	/**
 	 * Retrieves <code>this</code> card's name.
