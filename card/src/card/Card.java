@@ -90,7 +90,7 @@ public class Card extends Applet implements ISO7816 {
 		// Prepare reponse
 		Util.setShort(buf, ISO7816.OFFSET_CLA, (short) 0); // Not 0
 		Util.setShort(buf, ISO7816.OFFSET_INS, (short) 0); // 0 supposedly indicates a response APDU
-		
+
 		send(ins, authBuf, responseSize, apdu);
 		return;
 	}
@@ -518,43 +518,52 @@ public class Card extends Applet implements ISO7816 {
 	}
 
 	/**
-	 * Adds an amount of credits to the balance of <code>this</code> card.
+	 * Increments the balance of <code>this</code> card by a number of credits.
 	 * 
 	 * @param amount
-	 *            the amount of (non-zero and non-negative) credits to add to the balance.
-	 * @return the new balance.
+	 *            the amount of (non-zero and non-negative) credits to add.
+	 * @return the new balance, or 0 if an exception occurred.
+	 * @throws UserException
+	 *             if the amount of credits to add is <= 0, or if a balance change operation is already in progress.
 	 */
-	private short add(short amount) {
+	private short add(short amount) throws UserException {
+		short newBalance = 0;
 		try {
 			JCSystem.beginTransaction();
-			crypto.gain(amount);
+			newBalance = crypto.gain(amount);
 			JCSystem.commitTransaction();
 		} catch (ISOException ie) {
-			// TODO What to do with the exception once caught?
-		} catch (TransactionException te) {
+			UserException.throwIt((short) CONSTANTS.SW2_CREDITS_NEGATIVE);
 
+		} catch (TransactionException te) {
+			UserException.throwIt(CONSTANTS.SW2_INTERNAL_ERROR);
 		}
-		return crypto.getBalance();
+
+		return newBalance;
 	}
 
 	/**
 	 * Decrements the balance of <code>this</code> card by a number of credits.
 	 * 
 	 * @param amount
-	 *            the (non-negative) amount of credits to subtract.
+	 *            the amount of (non-zero and non-negative) credits to subtract.
 	 * @return the new balance.
+	 * @throws UserException
+	 *             if the amount of credits to add is <=0, or if a balance change operation is already in progress.
 	 */
-	private short spend(short amount) {
+	private short spend(short amount) throws UserException {
+		short newBalance = 0;
 		try {
 			JCSystem.beginTransaction();
-			crypto.spend(amount);
+			newBalance = crypto.spend(amount);
 			JCSystem.commitTransaction();
 		} catch (ISOException ie) {
-			// TODO What to do with the exception once caught?
-		} catch (TransactionException te) {
+			UserException.throwIt((short) CONSTANTS.SW2_CREDITS_NEGATIVE);
 
+		} catch (TransactionException te) {
+			UserException.throwIt(CONSTANTS.SW2_INTERNAL_ERROR);
 		}
-		return crypto.getBalance();
+		return newBalance;
 	}
 
 	/**
@@ -577,7 +586,7 @@ public class Card extends Applet implements ISO7816 {
 	 * @param buf
 	 *            the array that is full and will be cleared.
 	 * @throws ISOException
-	 *             when the <code>buf</code> is full.
+	 *             when the buffer is full.
 	 */
 	private void memoryFull(byte[] buf) {
 		throwException(ISO7816.SW_FILE_FULL);
