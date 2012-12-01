@@ -94,7 +94,11 @@ public class Card extends Applet implements ISO7816 {
 		// TODO Make more general function that decides on encryption based on auth status
 		// private void send(byte ins, byte[] data, short offset, APDU apdu) {}
 		// For now we only send challenge1 to the terminal
-		sendRSAEncrypted(crypto.getCompanyKey(), authBuf, responseSize, apdu);
+		switch (ins) {
+		case CONSTANTS.INS_AUTHENTICATE:
+			send(ins, authBuf, responseSize, apdu);
+		}
+
 	}
 
 	/**
@@ -189,14 +193,37 @@ public class Card extends Applet implements ISO7816 {
 	}
 
 	/**
-	 * Encrypts a message and then sends it.
+	 * Send the data encrypted based on the instruction byte. If we are authenticating we only use RSA, otherwise we use AES.
+	 * 
+	 * @param type
+	 *            the instruction byte
+	 * @param data
+	 *            the buffer that holds the message to be sent.
+	 * @param length
+	 *            the length of the message in the buffer.
+	 * @param apdu
+	 *            the APDU that invoked this response.
+	 */
+	private void send(short type, byte[] data, short length, APDU apdu) {
+		switch (type) {
+		case CONSTANTS.INS_AUTHENTICATE:
+			sendRSAEncrypted(crypto.getCompanyKey(), data, length, apdu);
+			break;
+		default:
+			sendAESEncrypted(data, length, apdu);
+			break;
+		}
+	}
+
+	/**
+	 * Encrypts a message with AES and then sends it.
 	 * 
 	 * @param data
-	 *            the buffer that holds the message to be sent
+	 *            the buffer that holds the message to be sent.
 	 * @param length
-	 *            the length of the message in the buffer
+	 *            the length of the message in the buffer.
 	 * @param apdu
-	 *            the APDU that invoked this response
+	 *            the APDU that invoked this response.
 	 */
 	private void sendAESEncrypted(byte[] data, short length, APDU apdu) {
 		if (crypto.authenticated()) {
@@ -214,7 +241,7 @@ public class Card extends Applet implements ISO7816 {
 	}
 
 	/**
-	 * Send a message encrypted with RSA 512.
+	 * Encrypts a message with RSA and then sends it.
 	 * 
 	 * @param key
 	 *            the receiving party's public key.
