@@ -178,7 +178,26 @@ public final class Crypto {
 	}
 
 	short symDecrypt(byte[] ciphertext, short ctOff, short ctLen, byte[] plaintext, short ptOff) {
-		// TODO AES Decryption not finished yet
+		
+		// Only use symmetric encryption when authenticated
+		if (!authenticated()) {
+			c.reset();
+			Card.throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_NO_AUTH_PERFORMED);
+			return 0;
+		}
+
+		// Check for buffer overflows and ciphertext misalignment
+
+		verifyBufferLength(ciphertext, ctOff, ctLen);
+		verifyBufferLength(plaintext, ptOff);
+		
+		if ((ctLen - ctOff) % 16 != 0) {
+			c.reset();
+			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_CIPHERTEXT_NOT_ALIGNED);
+			return 0;
+		}
+
+		// Assume all is well and continue decrypting
 		
 		short length = 0;
 		try {
@@ -188,6 +207,12 @@ public final class Crypto {
 			c.reset();
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, (byte) ce.getReason());
 		}
+		
+		length = Util.getShort(plaintext, ptOff);
+		
+		// Shift out the length bytes and strip padding bytes.
+		Util.arrayCopyNonAtomic(plaintext, (short) (ptOff + 2), plaintext, ptOff, length);
+
 		return length;
 	}
 
