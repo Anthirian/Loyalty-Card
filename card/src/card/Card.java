@@ -87,10 +87,13 @@ public class Card extends Applet implements ISO7816 {
 		} catch (UserException e) {
 			throwException(e.getReason());
 		}
-
-		// Prepare reponse
-		Util.setShort(buf, ISO7816.OFFSET_CLA, (short) 0); // Not 0
-		Util.setShort(buf, ISO7816.OFFSET_INS, (short) 0); // 0 supposedly indicates a response APDU
+		
+		// Ensure the buffer size is sufficient
+		if (responseSize > authBuf.length) {
+			reset();
+			throwException(ISO7816.SW_FILE_FULL);
+			return;
+		}
 
 		send(ins, authBuf, responseSize, apdu);
 		return;
