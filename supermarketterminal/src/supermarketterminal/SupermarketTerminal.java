@@ -1,16 +1,11 @@
 package supermarketterminal;
 
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
-import java.security.SignatureException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
-import java.util.Arrays;
-import java.util.Date;
 
 import common.CLI;
 import common.KeyManager;
@@ -111,7 +106,7 @@ public class SupermarketTerminal {
 			try {
 				Thread.sleep(1000);
 			} catch (InterruptedException e) {
-				System.err.println("Please do not interupt me!");
+				System.err.println("Please do not interrupt me!");
 			}
 			
 			command = CLI.prompt("1: add credits to card | " +
