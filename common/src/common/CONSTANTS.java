@@ -235,9 +235,9 @@ public class CONSTANTS {
 	// Our third message of the handshake
 	// Builds the following buffer: [ T | C | N_C | N_T ]
 	// Sent from the Terminal to the Card
-	public static final short AUTH_MSG_3_OFFSET_NAME_CARD = (short) 0;
-	public static final short AUTH_MSG_3_OFFSET_NAME_TERM = (short) (AUTH_MSG_3_OFFSET_NAME_CARD + NAME_LENGTH);
-	public static final short AUTH_MSG_3_OFFSET_NC = (short) (AUTH_MSG_3_OFFSET_NAME_TERM + NONCE_LENGTH);
+	public static final short AUTH_MSG_3_OFFSET_NAME_TERM = (short) 0;
+	public static final short AUTH_MSG_3_OFFSET_NAME_CARD = (short) (AUTH_MSG_3_OFFSET_NAME_TERM + NAME_LENGTH);
+	public static final short AUTH_MSG_3_OFFSET_NC = (short) (AUTH_MSG_3_OFFSET_NAME_CARD + NONCE_LENGTH);
 	public static final short AUTH_MSG_3_OFFSET_NT = (short) (AUTH_MSG_3_OFFSET_NC + NONCE_LENGTH);
 	public static final short AUTH_MSG_3_TOTAL_LENGTH = (short) (AUTH_MSG_3_OFFSET_NT + NONCE_LENGTH);
 

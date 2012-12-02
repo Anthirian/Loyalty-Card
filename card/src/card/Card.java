@@ -347,7 +347,7 @@ public class Card extends Applet implements ISO7816 {
 		// flush the buffer to prepare for response
 		clear(buffer);
 
-		// increase step counter (Is already being done in authenticate()
+		// increase step counter (Is already being done in authenticate())
 		// authState[AUTH_STEP] = CONSTANTS.P2_AUTHENTICATE_STEP2;
 
 		// prepare the response
@@ -512,7 +512,7 @@ public class Card extends Applet implements ISO7816 {
 		// 1. Decrypt with RSA
 		// 2. Verify C and T match previous values
 		// 3. Verify N_T matches
-		// 4. Store m as the session key to use until the card disconnects
+		// 4. Store k as the session key to use until the card disconnects
 	}
 
 	/**
