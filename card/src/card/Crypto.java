@@ -61,7 +61,7 @@ public final class Crypto {
 		pubKeyCar = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
 
 		privKeyCard = (RSAPrivateCrtKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_CRT_PRIVATE, KeyBuilder.LENGTH_RSA_512, false);
-		pubKeyCard = new byte[CONSTANTS.RSA_SIGNED_PUBKEY_LENGTH];
+		// pubKeyCard = new byte[CONSTANTS.RSA_SIGNED_PUBKEY_LENGTH];
 
 		sessionKey = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES_TRANSIENT_DESELECT, KeyBuilder.LENGTH_AES_128, false);
 
@@ -477,16 +477,27 @@ public final class Crypto {
 	}
 
 	/**
-	 * Retrieves <code>this</code> card's public key to use for encryption.
+	 * Gets the public key of <code>this</code> card. The key returned contains the ID of <code>this</code> card, the exponent of the public key and the modulus
+	 * of the keypair, respectively.
 	 * 
-	 * @return <code>this</code> card's public key.
+	 * @param buf
+	 *            the buffer to hold the key.
+	 * @return the length of the data in the buffer.
 	 */
-	public Key getCardKey() {
-		if (pubKeyCar.isInitialized()) {
-			return pubKeyCar;
-		} else {
+	public short getCardKey(byte[] buf) {
+		short totalLength = 0;
+		if (!pubKeyCar.isInitialized()) {
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_AUTH_PARTNER_KEY_NOT_INIT);
-			return null;
+			return 0;
+		} else if (buf.length < CONSTANTS.RSA_PUBKEY_LENGTH) {
+			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_AUTH_PARTNER_KEY_NOT_INIT);
+			return 0;
+		} else {
+			// everything is fine
+			// TODO Copy ID of Card into the Key as well
+			totalLength += pubKeyCar.getExponent(buf, CONSTANTS.RSA_PUBKEY_OFFSET_EXP);
+			totalLength += pubKeyCar.getModulus(buf, CONSTANTS.RSA_PUBKEY_OFFSET_MOD);
+			return totalLength;
 		}
 	}
 

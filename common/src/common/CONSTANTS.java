@@ -37,6 +37,7 @@ public class CONSTANTS {
 
 	/* Card issuance APDUs */
 	public static final byte INS_ISSUE = (byte) 0x0A;
+	public static final byte INS_GET_PUBKEY = (byte) 0x0E;
 
 	/* Balance operations instructions */
 	public static final byte INS_BAL_INC = (byte) 0x0B;
@@ -158,7 +159,15 @@ public class CONSTANTS {
 	public static final short RSA_KEY_PRIVEXP_LENGTH = (short) 128;
 	public static final short RSA_KEY_CRT_COMP_LENGTH = (short) 64;
 	public static final short RSA_SIGNATURE_LENGTH = (short) 128;
-
+	
+	// Our RSA key buffer
+	// Builds the following buffer: [ ID | MODULUS | EXPONENT ]
+	public static final short RSA_PUBKEY_OFFSET_ID = (short) 0;
+	public static final short RSA_PUBKEY_OFFSET_MOD = (short) (RSA_PUBKEY_OFFSET_ID + ID_LENGTH);
+	public static final short RSA_PUBKEY_OFFSET_EXP = (short) (RSA_PUBKEY_OFFSET_MOD + RSA_KEY_MOD_LENGTH);
+	public static final short RSA_PUBKEY_LENGTH = (short) (RSA_PUBKEY_OFFSET_EXP + RSA_KEY_PUBEXP_LENGTH);
+	
+	// Their RSA key buffer
 	public static final short RSA_SIGNED_PUBKEY_OFFSET_ID = (short) 0;
 	public static final short RSA_SIGNED_PUBKEY_OFFSET_MOD = (short) (RSA_SIGNED_PUBKEY_OFFSET_ID + ID_LENGTH);
 	public static final short RSA_SIGNED_PUBKEY_OFFSET_EXP = (short) (RSA_SIGNED_PUBKEY_OFFSET_MOD + RSA_KEY_MOD_LENGTH);

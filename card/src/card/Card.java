@@ -120,6 +120,8 @@ public class Card extends Applet implements ISO7816 {
 			case CONSTANTS.INS_ISSUE:
 				crypto.issueCard();
 				break;
+			case CONSTANTS.INS_GET_PUBKEY:
+				responseSize = crypto.getCardKey(buf);
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
 			}
