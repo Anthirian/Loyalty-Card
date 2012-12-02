@@ -28,7 +28,8 @@ public class AppletSession {
 
 	private int terminalId;
 	private int cardId;
-
+	private byte[] cardName;
+	
 	private byte[] sessionKey;
 	private boolean authenticationSuccess;
 
@@ -75,47 +76,39 @@ public class AppletSession {
 	public boolean authenticate(byte from) {
 		try {
 			// initiate authentication
-			byte[] nonceCard = initiateAuthentication(from);
+			byte[] nonceCard = authStep1(from);
 
-			// when there is no correct message send the nonce is null
+			// when there is no correct message sent, the nonce is null
 			if (nonceCard != null) {
 
 				// generate new random nonce
 				byte[] nonceTerminal = crypto.generateRandomNonce(CONSTANTS.NONCE_LENGTH);
 
 				// send received and generated nonce to the card
-				// receive the generated nonce and a certificate
-				byte[] nonceReceived = authenticateTerminal(from, nonceCard, nonceTerminal);
+				// receive the generated nonce
+				byte[] sessionKey = authStep3(from, cardName, nonceCard, nonceTerminal);
 
-				// when there is no correct message send the nonce is null
-				if (nonceReceived != null) {
-
-					// check the nonces to authenticate the card
-					if (authenticateCard(nonceReceived, nonceTerminal)) {
-						System.out.println("Authenticated.");
-						sessionKey = new byte[CONSTANTS.AES_KEY_LENGTH];
-						System.arraycopy(nonceCard, 0, sessionKey, 0, CONSTANTS.NONCE_LENGTH);
-						System.arraycopy(nonceTerminal, 0, sessionKey, CONSTANTS.NONCE_LENGTH, CONSTANTS.NONCE_LENGTH);
+				// when there is no correct message sent, the nonce is null
+				if (sessionKey != null) {
 						authenticationSuccess = true;
 						return true;
 					} else {
 						System.out.println("Authentication failure.");
 					}
 				}
-			}
 		} catch (SecurityException e) {
 			reset();
 			// System.err.println(e.getMessage());
 		}
 		return false;
 	}
-
-	private byte[] initiateAuthentication(byte from) {
+	
+	private byte[] authStep1 (byte from) {
 		// send authentication apdu
-
+		
 		Response response;
 		try {
-			response = com.sendCommand(CONSTANTS.INS_AUTHENTICATE, from, CONSTANTS.P2_AUTHENTICATE_STEP1);
+			response = com.sendCommand(from);
 		} catch (Exception e) {
 			throw new SecurityException();
 		}
@@ -127,7 +120,7 @@ public class AppletSession {
 		if (!response.success()) {
 			throw new SecurityException();
 		}
-
+		
 		// decrypt the data with own private key
 		byte[] data = crypto.decrypt(response.getData(), this.privKey);
 
@@ -135,19 +128,23 @@ public class AppletSession {
 			throw new SecurityException();
 		}
 
-		// extract the card nonce
-		byte[] cardNonce = Arrays.copyOfRange(data, CONSTANTS.AUTH_MSG_1_OFFSET_NA, CONSTANTS.AUTH_MSG_1_OFFSET_NA + CONSTANTS.NONCE_LENGTH);
-
-		// extract the signed public key - id pair
-		byte[] cert = Arrays.copyOfRange(data, CONSTANTS.AUTH_MSG_1_OFFSET_SIGNED_PUBKEY, CONSTANTS.AUTH_MSG_1_OFFSET_SIGNED_PUBKEY
-				+ CONSTANTS.RSA_SIGNED_PUBKEY_LENGTH);
-
-		try {
-			data = crypto.verify(cert, pubKeySupermarket);
-		} catch (SignatureException e) {
+		// extract the card name + nonce
+		this.cardName = Arrays.copyOfRange(data, CONSTANTS.AUTH_MSG_2_OFFSET_NAME_CARD, 
+				CONSTANTS.AUTH_MSG_2_OFFSET_NAME_TERM);
+		byte[] cardNonce = Arrays.copyOfRange(data, CONSTANTS.AUTH_MSG_2_OFFSET_NC, 
+				CONSTANTS.AUTH_MSG_2_OFFSET_NC + CONSTANTS.NONCE_LENGTH);
+		byte[] receivedTerminalName = Arrays.copyOfRange(data, 
+				CONSTANTS.AUTH_MSG_2_OFFSET_NAME_TERM, CONSTANTS.NAME_LENGTH);
+		
+		ByteBuffer bb = ByteBuffer.wrap(receivedTerminalName);
+		short checkName = bb.getShort();
+		
+		// verify decrypted_challenge[1] equals terminal name
+		if (!(checkName == CONSTANTS.NAME_TERM)) {
 			throw new SecurityException();
 		}
-
+		
+		/*
 		// save the card id
 		byte[] idCardBytes = Arrays.copyOfRange(data, CONSTANTS.RSA_SIGNED_PUBKEY_OFFSET_ID, CONSTANTS.RSA_SIGNED_PUBKEY_OFFSET_ID + CONSTANTS.ID_LENGTH);
 		ByteBuffer bb = ByteBuffer.wrap(idCardBytes);
@@ -168,25 +165,30 @@ public class AppletSession {
 		} catch (InvalidKeySpecException e) {
 			throw new SecurityException();
 		}
-
+		*/
 		return cardNonce;
 	}
 
-	private byte[] authenticateTerminal(byte from, byte[] nonceCard, byte[] nonceTerminal) {
+	private byte[] authStep3(byte from, byte[] nameCard, byte[] nonceCard, 
+			byte[] nonceTerminal) {
 		// build the message to be sent to the card
-		byte[] data = new byte[CONSTANTS.AUTH_MSG_2_LENGTH];
-		System.arraycopy(nonceCard, 0, data, CONSTANTS.AUTH_MSG_2_OFFSET_NA, CONSTANTS.NONCE_LENGTH);
-		System.arraycopy(nonceTerminal, 0, data, CONSTANTS.AUTH_MSG_2_OFFSET_NB, CONSTANTS.NONCE_LENGTH);
-		byte[] terminalIdBytes = ByteBuffer.allocate(CONSTANTS.SEQNR_BYTESIZE).putInt(this.terminalId).array();
-		System.arraycopy(terminalIdBytes, 0, data, CONSTANTS.AUTH_MSG_2_OFFSET_ID, CONSTANTS.ID_LENGTH);
-
+		byte[] data = new byte[CONSTANTS.AUTH_MSG_3_TOTAL_LENGTH];
+		System.arraycopy(from, 0, data, CONSTANTS.AUTH_MSG_3_OFFSET_NAME_TERM, 
+				CONSTANTS.NAME_LENGTH);
+		System.arraycopy(nameCard, 0, data, CONSTANTS.NAME_CARD, CONSTANTS.NAME_LENGTH);
+		System.arraycopy(nonceCard, 0, data, CONSTANTS.AUTH_MSG_3_OFFSET_NC, 
+				CONSTANTS.NONCE_LENGTH);
+		System.arraycopy(nonceTerminal, 0, data, CONSTANTS.AUTH_MSG_3_OFFSET_NT, 
+				CONSTANTS.NONCE_LENGTH);
+		
 		// encrypt the message with the card's public key
 		data = crypto.encrypt(data, this.pubKeyCard);
 
 		// send the command
 		Response response;
 		try {
-			response = com.sendCommand(CONSTANTS.INS_AUTHENTICATE, from, CONSTANTS.P2_AUTHENTICATE_STEP2, data);
+			response = com.sendCommand(CONSTANTS.INS_AUTHENTICATE, from, 
+					CONSTANTS.P2_AUTHENTICATE_STEP2, data);
 		} catch (Exception e) {
 			throw new SecurityException();
 		}
@@ -203,9 +205,24 @@ public class AppletSession {
 		}
 
 		// extract the received nonce
-		byte[] nonceReceived = Arrays.copyOfRange(data, CONSTANTS.AUTH_MSG_3_OFFSET_NB, CONSTANTS.AUTH_MSG_3_OFFSET_NB + CONSTANTS.NONCE_LENGTH);
+		byte[] nonceReceived = Arrays.copyOfRange(data, CONSTANTS.AUTH_MSG_4_OFFSET_NT, 
+				CONSTANTS.AUTH_MSG_4_OFFSET_NT + CONSTANTS.NONCE_LENGTH);
 
-		return nonceReceived;
+		// when there is no correct message sent, the nonce is null
+		if (nonceReceived != null) {
+
+			// check the nonces to authenticate the card, and store the session key
+			if (authenticateCard(nonceReceived, nonceTerminal)) {
+				System.out.println("Authenticated.");
+				sessionKey = new byte[CONSTANTS.AES_KEY_LENGTH];
+				System.arraycopy(data, CONSTANTS.AUTH_MSG_4_OFFSET_SESSION_KEY, 
+						sessionKey, 0, CONSTANTS.AES_KEY_LENGTH);				
+			} else {
+				System.out.println("Authentication failure.");
+			}
+		}
+		
+		return sessionKey;
 	}
 
 	private boolean authenticateCard(byte[] nonceReceived, byte[] nonceTerminal) {
