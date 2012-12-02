@@ -1,5 +1,6 @@
 package card;
 
+import javacard.framework.CardRuntimeException;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
 import javacard.framework.Util;
@@ -455,9 +456,16 @@ public final class Crypto {
 	 *            the buffer to hold the card's name.
 	 * @param offset
 	 *            the offset in the buffer.
+	 * @return length of the name, 0 if an exception occurred.
 	 */
-	void getCardName(byte[] buffer, short offset) {
-		buffer[offset] = CONSTANTS.NAME_CARD;
+	short getCardName(byte[] buffer, short offset) {
+		try {
+			buffer[offset] = CONSTANTS.NAME_CARD;
+		} catch (Exception e) {
+			Card.throwException(((CardRuntimeException) e).getReason());
+			return 0;
+		}
+		return CONSTANTS.NAME_LENGTH;
 	}
 
 	/**
@@ -467,13 +475,14 @@ public final class Crypto {
 	 *            the buffer to hold the nonce.
 	 * @param offset
 	 *            the offset in the buffer.
+	 * @return the amount of bytes copied into the buffer.
 	 */
-	void getCardNonce(byte[] buffer, short offset) {
-		Util.arrayCopyNonAtomic(cardNonce, (short) 0, buffer, offset, CONSTANTS.NONCE_LENGTH);
+	short getCardNonce(byte[] buffer, short offset) {
+		return Util.arrayCopyNonAtomic(cardNonce, (short) 0, buffer, offset, CONSTANTS.NONCE_LENGTH);
 	}
 
-	void getPubKeyCard(byte[] buffer, short offset) {
-		Util.arrayCopyNonAtomic(pubKeyCard, (short) 0, buffer, offset, CONSTANTS.RSA_SIGNED_PUBKEY_LENGTH);
+	short getPubKeyCard(byte[] buffer, short offset) {
+		return Util.arrayCopyNonAtomic(pubKeyCard, (short) 0, buffer, offset, CONSTANTS.RSA_SIGNED_PUBKEY_LENGTH);
 	}
 
 	/**

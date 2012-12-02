@@ -3,6 +3,7 @@ package card;
 import javacard.framework.APDU;
 import javacard.framework.APDUException;
 import javacard.framework.Applet;
+import javacard.framework.CardException;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
@@ -111,17 +112,25 @@ public class Card extends Applet implements ISO7816 {
 	}
 
 	/**
-	 * Handles the INStruction byte of an APDU and calls the corresponding functions. TODO Fix JavaDoc
+	 * Handles the INStruction byte of an APDU and calls the corresponding functions.
 	 * 
-	 * @param apdu
-	 *            the APDU to handle the instruction byte from.
+	 * @param cla
+	 *            the class byte from the APDU.
 	 * @param ins
-	 *            the instruction byte to check
-	 * @return
+	 *            the instruction byte from the APDU.
+	 * @param p1
+	 *            the first parameter byte from the APDU.
+	 * @param p2
+	 *            the second parameter byte from the APDU.
+	 * @param length
+	 *            the length of the data in <code>buffer</code>.
+	 * @param buffer
+	 *            the buffer holding the data relevant to the instruction.
+	 * @return the size of the data for the ResponseAPDU.
 	 * @throws UserException
 	 *             when the length of the amount of credits is longer than two bytes, i.e. not a short.
 	 */
-	private short handleInstruction(byte cla, byte ins, byte p1, byte p2, short length, byte[] buf) throws UserException {
+	private short handleInstruction(byte cla, byte ins, byte p1, byte p2, short length, byte[] buffer) throws UserException {
 		short responseSize = 0;
 
 		switch (state) {
@@ -132,7 +141,7 @@ public class Card extends Applet implements ISO7816 {
 				crypto.issueCard();
 				break;
 			case CONSTANTS.INS_GET_PUBKEY:
-				responseSize = crypto.getCardKey(buf);
+				responseSize = crypto.getCardKey(buffer);
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
 			}
@@ -141,16 +150,16 @@ public class Card extends Applet implements ISO7816 {
 			// If the card has been finalized it is ready for regular use
 			switch (ins) {
 			case CONSTANTS.INS_AUTHENTICATE:
-				responseSize = authenticate(p1, p2, length, buf);
+				responseSize = authenticate(p1, p2, length, buffer);
 				break;
 			case CONSTANTS.INS_BAL_INC:
-				responseSize = add(buf, length);
+				responseSize = add(buffer, length);
 				break;
 			case CONSTANTS.INS_BAL_DEC:
-				responseSize = subtract(buf, length);
+				responseSize = subtract(buffer, length);
 				break;
 			case CONSTANTS.INS_BAL_CHECK:
-				responseSize = checkCredits(buf);
+				responseSize = checkCredits(buffer);
 				break;
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
@@ -276,26 +285,26 @@ public class Card extends Applet implements ISO7816 {
 		short outLength = 0;
 		// Check if we are in the correct step
 		if (step != authState[AUTH_STEP] + 1) {
-			// resetSession(buffer);
+			// TODO resetSession(buffer);
 			UserException.throwIt(CONSTANTS.SW2_AUTH_STEP_INCORRECT);
 			return 0;
 		}
 
 		try {
-			// Maybe change this into a switch?
+			// TODO Maybe change this into a switch?
 			if (step == CONSTANTS.P2_AUTHENTICATE_STEP1) {
 				outLength = authStep2(to, length, buffer);
 			} else if (step == CONSTANTS.P2_AUTHENTICATE_STEP2) {
 				outLength = authStep4(to, length, buffer);
 			}
 		} catch (UserException e) {
-			// resetSession(buffer);
+			// TODO resetSession(buffer);
 			UserException.throwIt(e.getReason());
 			return 0;
 		}
 
 		if (outLength == 0) {
-			// resetSession(buffer);
+			// TODO resetSession(buffer);
 			UserException.throwIt((short) CONSTANTS.SW2_AUTH_OTHER_ERROR);
 			return 0;
 		} else {
@@ -325,7 +334,7 @@ public class Card extends Applet implements ISO7816 {
 	 */
 	private short authStep2(byte to, short length, byte[] buffer) throws UserException {
 		short decLength = 0;
-
+		short responseSize = 0;
 		// if (to != CONSTANTS.P1_AUTHENTICATE_CARD && to != CONSTANTS.P1_AUTHENTICATE_OFFICE) {
 		if (to != CONSTANTS.P1_AUTHENTICATE_CARD) { // "to" should be me (the card)
 			reset();
@@ -362,16 +371,16 @@ public class Card extends Applet implements ISO7816 {
 		// prepare the response
 
 		// Add this card's name
-		crypto.getCardName(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NAME_CARD);
+		responseSize += crypto.getCardName(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NAME_CARD);
 		// Add the previously found partner name
-		buffer[CONSTANTS.AUTH_MSG_2_OFFSET_NAME_TERM] = authPartnerID[0];
+		responseSize += Util.arrayCopyNonAtomic(authPartnerID, (short) 0, buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NAME_TERM, CONSTANTS.NAME_LENGTH);
+
 		// generate a nonce and store it in the buffer
 		crypto.generateCardNonce();
-		crypto.getCardNonce(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NC);
+		responseSize += crypto.getCardNonce(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NC);
 
-		// buffer now holds challenge1 (destined for the terminal): [ C | T | N_C ]
-		// TODO measure the length instead of assuming it to be correct
-		return CONSTANTS.AUTH_MSG_2_TOTAL_LENGTH;
+		// buffer should now hold challenge1 (destined for the terminal): [ C | T | N_C ]
+		return responseSize;
 	}
 
 	/**
@@ -392,6 +401,7 @@ public class Card extends Applet implements ISO7816 {
 	 *             if P1 of the CommandAPDU is incorrect
 	 */
 	private short authStep4(byte to, short length, byte[] buffer) throws UserException {
+		short responseSize = 0;
 		if (authState[AUTH_PARTNER] != to) {
 			reset();
 			UserException.throwIt((short) CONSTANTS.SW2_AUTH_WRONG_PARTNER);
@@ -401,7 +411,7 @@ public class Card extends Applet implements ISO7816 {
 		if (to != CONSTANTS.P1_AUTHENTICATE_CARD) { // "to" should be me (the card)
 			reset();
 			Card.throwException(CONSTANTS.SW1_WRONG_PARAMETERS, CONSTANTS.SW2_AUTH_WRONG_PARTNER);
-			return (short) 0;
+			return 0;
 		} // I am the recipient, so continue
 
 		// Decrypt the message
@@ -422,13 +432,14 @@ public class Card extends Applet implements ISO7816 {
 		} // the data contains my name
 
 		// proceed to check the name of the terminal matches the one we found in step 1
+
 		// TODO This check currently fails, because authState[AUTH_PARTNER] was not initialized in step 1
 		// Instead we initialized authPartner[0] with one byte representing the partner
-		if (authState[AUTH_PARTNER] != buffer[CONSTANTS.AUTH_MSG_3_OFFSET_NAME_TERM]) {
-			reset();
-			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_WRONG_PARTNER);
-			return 0;
-		} // the data contains the same terminal name as we found in step 1
+		// if (authState[AUTH_PARTNER] != buffer[CONSTANTS.AUTH_MSG_3_OFFSET_NAME_TERM]) {
+		// reset();
+		// throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_WRONG_PARTNER);
+		// return 0;
+		// } // the data contains the same terminal name as we found in step 1
 
 		// Check if the challenge has been solved by comparing the received nonce with the one from step 1
 		if (!crypto.checkCardNonce(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NC)) {
@@ -446,23 +457,31 @@ public class Card extends Applet implements ISO7816 {
 		// Prepare the response
 
 		// Add both parties to the response
-		buffer[CONSTANTS.AUTH_MSG_4_OFFSET_NAME_CARD] = CONSTANTS.NAME_CARD;
-		buffer[CONSTANTS.AUTH_MSG_4_OFFSET_NAME_TERM] = CONSTANTS.NAME_TERM;
-
-		// Append the Terminal's nonce
-		Util.arrayCopyNonAtomic(NT, (short) 0, buffer, CONSTANTS.AUTH_MSG_4_OFFSET_NT, CONSTANTS.NONCE_LENGTH);
-
-		// Generate the AES-128 session key and copy its bytes into the buffer
-		crypto.generateSessionKey();
-		if (crypto.getSessionKey(buffer, CONSTANTS.AUTH_MSG_4_OFFSET_SESSION_KEY) != CONSTANTS.AES_KEY_LENGTH) {
+		try {
+			buffer[CONSTANTS.AUTH_MSG_4_OFFSET_NAME_CARD] = CONSTANTS.NAME_CARD;
+			buffer[CONSTANTS.AUTH_MSG_4_OFFSET_NAME_TERM] = CONSTANTS.NAME_TERM;
+			responseSize += (2 * CONSTANTS.NAME_LENGTH);
+		} catch (Exception e) {
 			reset();
-			throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_SESSION_ENCRYPT_ERR);
+			throwException(((CardException) e).getReason());
 			return 0;
 		}
 
+		// Append the Terminal's nonce
+		responseSize += Util.arrayCopyNonAtomic(NT, (short) 0, buffer, CONSTANTS.AUTH_MSG_4_OFFSET_NT, CONSTANTS.NONCE_LENGTH);
+
+		// Generate the AES-128 session key and copy it into the buffer
+		crypto.generateSessionKey();
+		if (crypto.getSessionKey(buffer, CONSTANTS.AUTH_MSG_4_OFFSET_SESSION_KEY) != CONSTANTS.AES_KEY_LENGTH) {
+			reset();
+			throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_UNSUPPORTED_CRYPTO_MODE);
+			return 0;
+		} else {
+			responseSize += CONSTANTS.AES_KEY_LENGTH;
+		}
+
 		// Everything is fine
-		// TODO measure the length instead of assuming it to be correct
-		return CONSTANTS.AUTH_MSG_4_TOTAL_LENGTH;
+		return responseSize;
 	}
 
 	private void handshakePseudoCode() {
@@ -658,7 +677,6 @@ public class Card extends Applet implements ISO7816 {
 		clear(authBuf);
 		clear(authState);
 		clear(authPartnerID);
-		// TODO Any other buffers to clear?
 		crypto.clearSessionData();
 		JCSystem.commitTransaction();
 	}
