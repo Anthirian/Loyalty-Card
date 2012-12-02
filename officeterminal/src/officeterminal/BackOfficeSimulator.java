@@ -18,7 +18,6 @@ import java.security.interfaces.RSAPublicKey;
 
 import common.TerminalCrypto;
 import common.KeyManager;
-import common.Formatter;
 
 /**
  * Simulates the BackOffice.

@@ -1,6 +1,5 @@
 package common;
 
-import java.nio.ByteBuffer;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
@@ -51,6 +50,12 @@ public class TerminalCrypto {
 		}
 	}
 	
+	/**
+	 * Encrypt data with a specific public RSA key
+	 * @param data data to be encrypted
+	 * @param pubKey the public RSA key to perform encryption
+	 * @return encrypted data
+	 */
 	public byte[] encrypt(byte[] data, RSAPublicKey pubKey) {
 		SecretKey skey = AESKeyGen.generateKey();
 		byte[] AESKey = skey.getEncoded();
@@ -65,6 +70,12 @@ public class TerminalCrypto {
 		return data;
 	}
 	
+	/**
+	 * Decrypt encrypted data with a specific private RSA key
+	 * @param data encrypted data to be decrypted
+	 * @param privKey the private RSA key to perform decryption
+	 * @return decrypted data
+	 */
 	public byte[] decrypt(byte[] data, RSAPrivateKey privKey) {
 		// extract the 128 byte RSA encrypted AES key from the end of the cipher
 		// text
@@ -78,6 +89,12 @@ public class TerminalCrypto {
 		return data;
 	}
 	
+	/**
+	 * Sign data with a specific private RSA key
+	 * @param data data to be signed
+	 * @param privKey private RSA key to sign data
+	 * @return signed data
+	 */
 	public byte[] sign(byte[] data, RSAPrivateKey privKey) {
 		try {
 			RSASign.initSign(privKey);
@@ -105,6 +122,14 @@ public class TerminalCrypto {
 		return null;
 	}
 	
+	/**
+	 * Verify a signature signed with a private RSA key, using the corresponding
+	 * public RSA key, and return unsigned data
+	 * @param data the signed data
+	 * @param pubKey the public RSA key to verify the signature
+	 * @return data without the signature
+	 * @throws SignatureException
+	 */
 	public byte[] verify(byte[] data, RSAPublicKey pubKey)
 			throws SignatureException {
 		try {
@@ -128,6 +153,11 @@ public class TerminalCrypto {
 		throw new SignatureException();
 	}
 	
+	/**
+	 * Generate a random nonce
+	 * @param n 
+	 * @return a random nonce
+	 */
 	public byte[] generateRandomNonce(int n) {
 		SecureRandom random = new SecureRandom();
 		byte[] nonce = new byte[n];
@@ -135,6 +165,12 @@ public class TerminalCrypto {
 		return nonce;
 	}
 	
+	/**
+	 * Encrypt data with a given public RSA key
+	 * @param data the data to be encrypted
+	 * @param pubkey the key to perform encryption
+	 * @return encrypted data
+	 */
 	public byte[] encryptRSA(byte[] data, RSAPublicKey pubKey) {
 		try {
 			// perform rsa encryption
@@ -153,6 +189,12 @@ public class TerminalCrypto {
 		return null;
 	}
 	
+	/**
+	 * Decrypt encrypted data with a given private RSA key
+	 * @param data the data to be decrypted
+	 * @param privkey the private key to perform decryption
+	 * @return decrypted data
+	 */	
 	public byte[] decryptRSA(byte[] data, RSAPrivateKey privKey) {
 		try {
 			// perform rsa decryption
@@ -170,6 +212,12 @@ public class TerminalCrypto {
 		return null;
 	}
 	
+	/**
+	 * Decrypt encrypted data with a given AES key
+	 * @param data the data to be decrypted
+	 * @param AESKey the key to perform decryption
+	 * @return decrypted data
+	 */
 	public byte[] decryptAES(byte[] data, byte[] AESKey) {
 		try {
 			SecretKeySpec AESKeySpec = new SecretKeySpec(AESKey, "AES");
@@ -191,6 +239,12 @@ public class TerminalCrypto {
 		return null;
 	}
 	
+	/**
+	 * Encrypt data with a given AES key
+	 * @param data the data to be encrypted
+	 * @param AESKey the key to perform encryption
+	 * @return encrypted data
+	 */
 	public byte[] encryptAES(byte[] data, byte[] AESKey) {
 		try {
 			// pad data before encrypting with AES
@@ -249,20 +303,23 @@ public class TerminalCrypto {
 			KeyPair keypair = generator.generateKeyPair();
 			RSAPublicKey pubKey = (RSAPublicKey) keypair.getPublic();
 			RSAPrivateKey privKey = (RSAPrivateKey) keypair.getPrivate();
-			// perform encryption en decryption
+			
+			// perform encryption and decryption with test data
 			TerminalCrypto pk = new TerminalCrypto();
 			byte[] data = new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
 					12, 13, 14, 15, 16 };
 			printHex("Cleartext", data);
 			data = pk.encrypt(data, pubKey);
-			//printHex("After encryption", data);
+			printHex("After encryption", data);
 			data = pk.sign(data, privKey);
-			//printHex("After signing", data);
+			printHex("After signing", data);
+			
 			try {
 				data = pk.verify(data, pubKey);
 			} catch (SignatureException e) {
 				e.printStackTrace();
 			}
+			
 			//printHex("After verify", data);
 			data = pk.decrypt(data, privKey);
 			printHex("After decryption", data);

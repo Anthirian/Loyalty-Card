@@ -6,18 +6,12 @@ import common.CONSTANTS;
 import common.Formatter;
 import common.Response;
 import common.AppletCommunication;
-import common.TerminalCrypto;
-import common.KeyManager;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.security.Security;
-import java.security.SignatureException;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
@@ -82,6 +76,10 @@ public class OfficeTerminal {
 		com = new AppletCommunication(session);
 	}
 
+	/**
+	 * Get the customer from the database with the corresponding id from this session
+	 * @return customer with id from this session
+	 */
 	public Customer getCustomer() {
 		try {
 			return office.getCustomerByCard(session.getCardId());
@@ -243,23 +241,6 @@ public class OfficeTerminal {
 	}
 
 	/**
-	 * Generates a new keypair for a car, and returns the new public key.
-	 * 
-	 * @param name
-	 */
-	/*
-	public Car addNewCar(String name) {
-		try {
-			int carId = office.addNewCar(name);
-			return office.getCarByID(carId);
-		} catch (BackOfficeException e) {
-			System.err.println("Error: Adding new car failed: "
-					+ e.getMessage());
-		}
-		return null;
-	}
-	*/
-	/**
 	 * Register a new customer
 	 * 
 	 * @param cusName
@@ -272,282 +253,11 @@ public class OfficeTerminal {
 		return office.registerCustomer(cusName);
 	}
 
-	/**
-	 * Give out a car certificate for a certain car to an inserted card.
-	 * 
-	 * @param carID
-	 *            ID for the car that is rented
-	 */
-	/*
-	private boolean rentCar(int carID, int numDays) {
-
-		com.waitForCard();
-		if (!session.authenticate(CONSTANTS.P1_AUTHENTICATE_OFFICE)) {
-			// trying to authenticate
-			System.err.println("Authentication error. Is card personalized?");
-			return false;
-		}
-		Car theCar = null;
-		try {
-			theCar = office.getCarByID(carID);
-		} catch (BackOfficeException e) {
-			System.err.println("Error: Retrieving car keys failed: "
-					+ e.getMessage());
-			// e.printStackTrace();
-		}
-		if (theCar.getRented()) {
-			String override = CLI
-					.prompt("This car is already rented out. Override? (Y/N): ");
-
-			if (!override.equals("Y")) {
-				return false;
-			}
-		}
-		// rental start and end timestamps
-		int rentalStart = (int) (System.currentTimeMillis() / 1000);
-		int rentalEnd = rentalStart + numDays * 68400;
-
-		RSAPublicKey carKey;
-		carKey = (RSAPublicKey) theCar.getPublicKey();
-
-		int carSeq = theCar.getSequenceNumber() + 1;
-
-		byte[] plaincert = new byte[CONSTANTS.CERT_PLAIN_LENGTH];
-		Arrays.fill(plaincert, (byte) 0);
-
-		int cardID = session.getCardId();
-
-		// Add the card id
-		System.arraycopy(Formatter.toByteArray(cardID), 0, plaincert,
-				CONSTANTS.CERT_OFFSET_CARDID, CONSTANTS.ID_LENGTH);
-
-		// Add the car id
-		System.arraycopy(Formatter.toByteArray(carID), 0, plaincert,
-				CONSTANTS.CERT_OFFSET_CARID, CONSTANTS.ID_LENGTH);
-
-		// Add the car sequence
-		System.arraycopy(Formatter.toByteArray(carSeq), 0, plaincert,
-				CONSTANTS.CERT_OFFSET_SEQNUM, CONSTANTS.SEQ_LENGTH);
-
-		// Add the startDate
-		System
-				.arraycopy(Formatter.toByteArray(rentalStart), 0,
-						plaincert, CONSTANTS.CERT_OFFSET_START,
-						CONSTANTS.DATE_LENGTH);
-
-		// Add the endDate
-		System.arraycopy(Formatter.toByteArray(rentalEnd), 0, plaincert,
-				CONSTANTS.CERT_OFFSET_END, CONSTANTS.DATE_LENGTH);
-
-		byte[] signedCert;
-		try {
-			signedCert = office.sign(plaincert);
-		} catch (BackOfficeException e) {
-			System.err.println("Error: failed to sign car certificate: "
-					+ e.getMessage());
-			return false;
-		}
-
-		if (signedCert.length != CONSTANTS.CERT_LENGTH) {
-			System.err.println("Car certificate is of incorrect size: "
-					+ signedCert.length);
-			return false;
-		}
-
-		byte[] carPubkeyModulus = Formatter.getUnsignedBytes(carKey
-				.getModulus());
-		byte[] carPubkeyExponent = Formatter.getUnsignedBytes(carKey
-				.getPublicExponent());
-		byte[] rentCarMessage = new byte[CONSTANTS.RENT_MSG_LENGTH];
-		System.arraycopy(carPubkeyModulus, 0, rentCarMessage,
-				CONSTANTS.RENT_MSG_OFFSET_PUB_MOD
-						+ CONSTANTS.RSA_KEY_MOD_LENGTH
-						- carPubkeyModulus.length, carPubkeyModulus.length);
-		System.arraycopy(carPubkeyExponent, 0, rentCarMessage,
-				CONSTANTS.RENT_MSG_OFFSET_PUB_EXP
-						+ CONSTANTS.RSA_KEY_PUBEXP_LENGTH
-						- carPubkeyExponent.length, carPubkeyExponent.length);
-		System.arraycopy(signedCert, 0, rentCarMessage,
-				CONSTANTS.RENT_MSG_OFFSET_CERT, CONSTANTS.CERT_LENGTH);
-
-		System.out.println("Sending certificate");
-		Response response = com.sendCommand(CONSTANTS.INS_RENT_CAR,
-				rentCarMessage);
-
-		if (response == null) {
-			System.err.println("Client already rented a car.");
-			return false;
-		}
-
-		if (!response.success()) {
-			// System.err.println("Error: " +
-			// Formatter.toHexString(response.getStatus()));
-			return false;
-		} else {
-			System.out.println("Certificate sent");
-			try {
-				office.incrementCarSequenceNumber(carID);
-			} catch (BackOfficeException e) {
-				System.err
-						.println("Error: Incrementing car sequence number failed "
-								+ e.getMessage() + " Revoke the certificate.");
-				return false;
-			}
-			theCar.rentCar();
-			return true;
-		}
-	}
-	*/
-	/*
-	private boolean checkMileage() {
-		Response mileageResponse = com.sendCommand(CONSTANTS.INS_GET_MILEAGE);
-
-		if (mileageResponse == null) {
-			System.err.println("Could not read mileage data from card.");
-			return false;
-		}
-
-		byte[] mileageData = null;
-		if (mileageResponse.success()) {
-			mileageData = mileageResponse.getData();
-		} else {
-			System.err.println("Could not read mileage data from card.");
-			return false;
-		}
-
-		byte[] tearFlag = new byte[mileageData.length];
-		Arrays.fill(tearFlag, (byte) 0xFF);
-		byte[] unused = new byte[mileageData.length];
-		Arrays.fill(unused, (byte) 0x00);
-
-		if (Arrays.equals(tearFlag, mileageData)) { // Card tear detection
-			System.err
-					.println("Please do not remove the card before stopping the vehicle. Please insert the card into the vehicle, and check out again.");
-			return false;
-		}
-		if (Arrays.equals(unused, mileageData)) { // Card unused detection
-			System.err
-					.println("Please insert the card into the vehicle, and check out.");
-			return false;
-		}
-
-		int receivedVehicleId;
-		try {
-			receivedVehicleId = getCarIdFromCert();
-		} catch (SecurityException e) {
-			CLI.showln(e.getMessage());
-			return false;
-		}
-
-		KeyManager km = new KeyManager();
-		RSAPublicKey carKey = null;
-		try {
-			carKey = (RSAPublicKey) km.loadKeys("Car_" + receivedVehicleId)
-					.getPublic();
-		} catch (NoSuchAlgorithmException e1) {
-			System.err.println("Error while reading key of the car");
-			// e1.printStackTrace();
-		} catch (InvalidKeySpecException e1) {
-			System.err.println("Error while reading key of the car");
-			// e1.printStackTrace();
-		} catch (FileNotFoundException e1) {
-			System.err.println("Error while reading key of the car");
-			// e1.printStackTrace();
-		} catch (IOException e1) {
-			System.err.println("Error while reading key of the car");
-			// e1.printStackTrace();
-		}
-
-		TerminalCrypto crypt = new TerminalCrypto();
-		byte[] mileageBytes = null;
-		try {
-			mileageBytes = crypt.verify(mileageData, carKey);
-		} catch (SignatureException e) {
-			System.err.println("Error while checking the signed mileagedata");
-			return false;
-		}
-
-		int mileage = Formatter.byteArrayToInt(mileageBytes);
-		System.out.println("Mileage is: " + mileage);
-		return true;
-	}
-	*/
-	
-	/*
-	private int getCarIdFromCert() throws SecurityException {
-		byte[] certificateData;
-		TerminalCrypto crypto = new TerminalCrypto();
-		try {
-			certificateData = crypto.verify(session.getCertificate(),
-					(RSAPublicKey) office.getSupermarketKeyPair().getPublic());
-		} catch (SignatureException e) {
-			throw new SecurityException("Invalid certificate, no car rented?");
-		} catch (BackOfficeException e) {
-			throw new SecurityException(e.getMessage());
-		}
-
-		byte[] vehicleIdBytes = Arrays.copyOfRange(certificateData,
-				CONSTANTS.CERT_OFFSET_CARID, CONSTANTS.CERT_OFFSET_CARID
-						+ CONSTANTS.ID_LENGTH);
-		int receivedVehicleId = Formatter.byteArrayToInt(vehicleIdBytes);
-		return receivedVehicleId;
-	}
-	*/
-
-	/*
-	private boolean returnCar() {
-		com.waitForCard();
-		if (!session.authenticate(CONSTANTS.P1_AUTHENTICATE_OFFICE)) {
-			System.err.println("Authentication error.");
-			return false;
-		}
-
-		System.out.println("Returning car.");
-		System.out.println("Checking mileage.");
-
-		if (checkMileage() == true) {
-			// Mileage data is valid, remove the cert from the card.
-			Response response = com.sendCommand(CONSTANTS.INS_RETURN_CAR);
-			if (!response.success()) {
-				// System.err.println("Error: " +
-				// Formatter.toHexString(response.getStatus()));
-				return false;
-			} else {
-				System.out.println("Card can no longer start the vehicle.");
-				try {
-					office.getCarByID(getCarIdFromCert()).returnCar();
-				} catch (BackOfficeException e) {
-					CLI.showln(e.getMessage());
-					return false;
-				}
-				return true;
-			}
-		}
-		return false;
-	}
-	*/
-
-	/*
-	private List<Car> getCarIds() {
-		try {
-			return office.getCars();
-		} catch (BackOfficeException e) {
-			System.err
-					.println("Couldn't fetch list of cars: " + e.getMessage());
-			return new ArrayList<Car>();
-		}
-	}
-	*/
-
 	public static void main(String[] args) {
 		Security.addProvider(new BouncyCastleProvider());
 		OfficeTerminal ot = new OfficeTerminal();
 
-		/*
-		 * Simple command line interface. We don't think that having a nice GUI
-		 * is the goal here. Also, because of this, we do not "nicely" handle
-		 * all invalid input.
-		 */
+		/* Simple command line interface */
 		mainmenu: while (true) {
 			String command = "0";
 			try {
@@ -557,9 +267,11 @@ public class OfficeTerminal {
 			}
 
 			command = CLI
-					.prompt("\nPlease enter command.\n(1) Register new customer | (2) Personalize card |" +
-							" (3) View customer info | (4) Delete customer | (9) Exit\n(?): ");
+					.prompt("\nPlease enter command.\n(1) Register new customer |" +
+							" (2) Personalize card | (3) View customer info |" +
+							" (4) Delete customer | (9) Exit\n(?): ");
 
+			/* Register new customer */
 			if (Integer.parseInt(command) == 1) {
 				String name;
 
@@ -594,12 +306,18 @@ public class OfficeTerminal {
 				CLI.showln("Client created (Id, name): " + "(" + cust.getID()
 						+ ", " + cust.getName() + ")");
 
-			} else if (Integer.parseInt(command) == 2) {
+			}
+			
+			/* Personalize card: create and store keys on the card */
+			else if (Integer.parseInt(command) == 2) {
 				int client = Integer.parseInt(CLI.prompt("Please enter client's id: "));
 				if (client == -1)
 					continue mainmenu;
 				ot.personalizeCard(client);
-			} else if (Integer.parseInt(command) == 3) {
+			}
+			
+			/* View more info about specific customer */
+			else if (Integer.parseInt(command) == 3) {
 				List<Customer> customers = ot.getCustomerIds();
 				for (Customer c : customers) {
 					System.out.println("Customer #" + c.getID() + ": " + c.getName());
@@ -621,7 +339,10 @@ public class OfficeTerminal {
 				System.out.println(chosen.getName() + ": Card ID = " + chosen.getCardID()
 							+ ", balance = " + chosen.getCredits());
 				
-			} else if (Integer.parseInt(command) == 4) {
+			}
+			
+			/* Delete a specific customer */
+			else if (Integer.parseInt(command) == 4) {
 				int cust = Integer.parseInt(CLI.prompt("Please enter customer's id: "));
 				if (cust == -1)
 					continue mainmenu;
@@ -640,8 +361,10 @@ public class OfficeTerminal {
 					System.err.println("Could not delete client.");
 					continue mainmenu;
 				}
-			} else if (Integer.parseInt(command) == 9) {
-				/* Exit program */
+			}
+			
+			/* Exit */
+			else if (Integer.parseInt(command) == 9) {
 				ot.save();
 				break;
 			} else {
@@ -650,14 +373,29 @@ public class OfficeTerminal {
 		}
 	}
 
+	/**
+	 * Returns a customer with specified customer id
+	 * @param cust idof customer to be fetched
+	 * @return customer of type Customer
+	 * @throws BackOfficeException
+	 */
 	private Customer getCustomerByID(int cust) throws BackOfficeException {
 		return office.getCustomerByID(cust);
 	}
 
+	/**
+	 * Delete a specified customer from the database
+	 * @param customerID id of the customer to be removed from the database
+	 * @throws BackOfficeException
+	 */
 	private void deleteCustomer(int customerID) throws BackOfficeException {
 		office.deleteCustomer(customerID);
 	}
 
+	/**
+	 * Fetch a list of all customers in the database
+	 * @return an ArrayList with customers of type Customer
+	 */
 	private List<Customer> getCustomerIds() {
 		try {
 			return office.getCustomers();
