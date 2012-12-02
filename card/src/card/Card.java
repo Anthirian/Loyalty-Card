@@ -93,6 +93,23 @@ public class Card extends Applet implements ISO7816 {
 		return;
 	}
 
+	/**
+	 * Handles the instruction byte with the appropriate buffer.
+	 * 
+	 * @param buf
+	 *            the buffer to use for the operation
+	 * @param length
+	 *            the length of the data in <code>buffer</code>.
+	 * @param cla
+	 *            the class byte from the APDU.
+	 * @param ins
+	 *            the instruction byte from the APDU.
+	 * @param p1
+	 *            the first parameter byte from the APDU.
+	 * @param p2
+	 *            the second parameter byte from the APDU.
+	 * @return the length of the response data.
+	 */
 	private short processFurther(byte[] buf, short length, byte cla, byte ins, byte p1, byte p2) {
 		short responseSize = 0;
 
@@ -311,6 +328,12 @@ public class Card extends Applet implements ISO7816 {
 			// Everything went fine, so move on to the next step.
 			authState[AUTH_STEP] = step;
 			authState[AUTH_PARTNER] = to;
+			
+			// the last auth step was ok: term has authenticated to card
+			if (authState[AUTH_STEP] == CONSTANTS.P2_AUTHENTICATE_STEP2) {
+				crypto.enable();
+			}
+			
 			return outLength;
 		}
 	}

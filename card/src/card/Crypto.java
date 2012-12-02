@@ -331,11 +331,9 @@ public final class Crypto {
 	 */
 	void clearSessionData() {
 		sessionKey.clearKey();
-		// messageKey.clearKey();
 		Util.arrayFillNonAtomic(tmpKey, (short) 0, (short) tmpKey.length, (byte) 0);
 		Util.arrayFillNonAtomic(cardNonce, (short) 0, (short) cardNonce.length, (byte) 0);
-		// Util.arrayFillNonAtomic(termNonce, (short) 0, (short) termNonce.length, (byte) 0);
-		authState[0] = 0;
+		disable();
 	}
 
 	/**
@@ -432,7 +430,21 @@ public final class Crypto {
 	 *         <code>false</code>otherwise.
 	 */
 	boolean authenticated() {
-		return authState[0] == 1;
+		return authState[0] == CONSTANTS.AUTH_SUCCESS;
+	}
+
+	/**
+	 * Enables the cryptographic operations of <code>this</code> card. This makes it possible to make changes in the balance and retrieve it.
+	 */
+	void enable() {
+		authState[0] = CONSTANTS.AUTH_SUCCESS;
+	}
+
+	/**
+	 * Disables the cryptographic operations of <code>this</code> card. This makes it impossible to make any changes in the balance or even retrieve it.
+	 */
+	void disable() {
+		authState[0] = CONSTANTS.AUTH_NOT_PERFORMED;
 	}
 
 	/**

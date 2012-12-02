@@ -18,14 +18,17 @@ public class CONSTANTS {
 
 	public static final byte CRYPTO_TYPE_SYMMETRIC = (byte) 0xC8;
 	public static final byte CRYPTO_TYPE_ASYMMETRIC = (byte) 0xC9;
-	
+
+	public static final byte AUTH_NOT_PERFORMED = (byte) 0x00;
+	public static final byte AUTH_SUCCESS = (byte) 0x01;
+
 	/* APDU chaining APDUs */
-	public static final byte CLA_CHAIN_LAST_OR_NONE = (byte) 0x00;
-	public static final byte CLA_CHAIN_FIRST_OR_NEXT = (byte) 0x10;
-	public static final byte CLA_DEF = (byte) 0x01;
+	// public static final byte CLA_CHAIN_LAST_OR_NONE = (byte) 0x00;
+	// public static final byte CLA_CHAIN_FIRST_OR_NEXT = (byte) 0x10;
+	// public static final byte CLA_DEF = (byte) 0x01;
 
 	/* Personalization APDUs */
-	public static final byte INS_PERSONALIZE_WRITE = (byte) 0x07;
+	// public static final byte INS_PERSONALIZE_WRITE = (byte) 0x07;
 
 	/* Authentication APDUs */
 	public static final byte INS_AUTHENTICATE = (byte) 0x09;
@@ -118,7 +121,7 @@ public class CONSTANTS {
 	public static final byte SW2_CIPHERTEXT_NOT_ALIGNED = (byte) 0xC5;
 
 	public static final byte SW2_MSG_CTR_OVERFLOW = (byte) 0xC6;
-	
+
 	public static final byte SW2_UNSUPPORTED_CRYPTO_MODE = (byte) 0xC7;
 
 	/* Personalization issues */
@@ -159,14 +162,14 @@ public class CONSTANTS {
 	public static final short RSA_KEY_PRIVEXP_LENGTH = (short) 128;
 	public static final short RSA_KEY_CRT_COMP_LENGTH = (short) 64;
 	public static final short RSA_SIGNATURE_LENGTH = (short) 128;
-	
+
 	// Our RSA key buffer
 	// Builds the following buffer: [ ID | MODULUS | EXPONENT ]
 	public static final short RSA_PUBKEY_OFFSET_ID = (short) 0;
 	public static final short RSA_PUBKEY_OFFSET_MOD = (short) (RSA_PUBKEY_OFFSET_ID + ID_LENGTH);
 	public static final short RSA_PUBKEY_OFFSET_EXP = (short) (RSA_PUBKEY_OFFSET_MOD + RSA_KEY_MOD_LENGTH);
 	public static final short RSA_PUBKEY_LENGTH = (short) (RSA_PUBKEY_OFFSET_EXP + RSA_KEY_PUBEXP_LENGTH);
-	
+
 	// Their RSA key buffer
 	public static final short RSA_SIGNED_PUBKEY_OFFSET_ID = (short) 0;
 	public static final short RSA_SIGNED_PUBKEY_OFFSET_MOD = (short) (RSA_SIGNED_PUBKEY_OFFSET_ID + ID_LENGTH);
