@@ -32,7 +32,7 @@ public class Card extends Applet implements ISO7816 {
 	byte[] authState;
 	byte[] authPartnerID;
 
-	/** Holds the terminal nonce generated during authentication step two. */
+	/** Holds the terminal nonce generated during authentication step four. */
 	byte[] NT;
 
 	/** The applet state (<code>INIT</code> or <code>ISSUED</code>). */
@@ -159,7 +159,7 @@ public class Card extends Applet implements ISO7816 {
 				crypto.issueCard();
 				break;
 			case CONSTANTS.INS_GET_PUBKEY:
-				responseSize = crypto.getCardKey(buffer);
+				responseSize = crypto.getPubKeyCard(buffer);
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
 			}
@@ -237,7 +237,7 @@ public class Card extends Applet implements ISO7816 {
 	private void send(short type, byte[] data, short length, APDU apdu) {
 		switch (type) {
 		case CONSTANTS.INS_AUTHENTICATE:
-			sendRSAEncrypted(crypto.getCompanyKey(), data, length, apdu);
+			sendRSAEncrypted(crypto.getPubKeySupermarket(), data, length, apdu);
 			break;
 		default:
 			sendAESEncrypted(data, length, apdu);
@@ -309,11 +309,15 @@ public class Card extends Applet implements ISO7816 {
 		}
 
 		try {
-			// TODO Maybe change this into a switch?
-			if (step == CONSTANTS.P2_AUTHENTICATE_STEP1) {
+			switch (step) {
+			case CONSTANTS.P2_AUTHENTICATE_STEP1:
 				outLength = authStep2(to, length, buffer);
-			} else if (step == CONSTANTS.P2_AUTHENTICATE_STEP2) {
+				break;
+			case CONSTANTS.P2_AUTHENTICATE_STEP2:
 				outLength = authStep4(to, length, buffer);
+				break;
+			default:
+				throwException(ISO7816.SW_WRONG_P1P2);
 			}
 		} catch (UserException e) {
 			reset();

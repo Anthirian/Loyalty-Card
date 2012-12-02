@@ -10,6 +10,7 @@ final class SupermarketRSAKey {
 
 	private static final byte[] pubExp = { (byte) 0x01, (byte) 0x00, (byte) 0x01 };
 	private static final byte[] pubMod = { 
+		// TODO Dit is een 1024 bits key, halveren werkt niet door willekeurige bytes weg te halen.
 		(byte) 0xab, (byte) 0x1d, (byte) 0x04, (byte) 0xfc, (byte) 0x7c, (byte) 0x42, (byte) 0x95, (byte) 0x4f, 
 		(byte) 0xec, (byte) 0xb7, (byte) 0x91, (byte) 0x97, (byte) 0xe7, (byte) 0x57, (byte) 0x4d, (byte) 0x45, 
 		(byte) 0x9b, (byte) 0x31, (byte) 0x6c, (byte) 0x37, (byte) 0x65, (byte) 0x01, (byte) 0xa8, (byte) 0x02, 
