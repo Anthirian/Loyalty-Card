@@ -490,7 +490,7 @@ public final class Crypto {
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_AUTH_PARTNER_KEY_NOT_INIT);
 			return 0;
 		} else if (buf.length < CONSTANTS.RSA_PUBKEY_LENGTH) {
-			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_AUTH_PARTNER_KEY_NOT_INIT);
+			Card.throwException(CONSTANTS.SW1_WRONG_LENGTH, CONSTANTS.SW2_MORE_DATA);
 			return 0;
 		} else {
 			// everything is fine
