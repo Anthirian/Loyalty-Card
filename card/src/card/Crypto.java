@@ -10,8 +10,8 @@ import javacard.security.Key;
 import javacard.security.KeyBuilder;
 import javacard.security.RSAPrivateCrtKey;
 import javacard.security.RSAPublicKey;
-import javacard.security.RandomData;
-import javacard.security.Signature;
+import javacard.security.RandomData; 
+//import javacard.security.Signature;
 import javacardx.crypto.Cipher;
 
 import common.CONSTANTS;
@@ -25,7 +25,7 @@ public final class Crypto {
 	private Cipher rsaCipher;
 	private Cipher aesCipher;
 
-	private Signature rsaSignature;
+	// private Signature rsaSignature;
 
 	private RandomData random;
 	private byte[] cardNonce;
@@ -68,7 +68,7 @@ public final class Crypto {
 
 		rsaCipher = Cipher.getInstance(Cipher.ALG_RSA_PKCS1, false);
 		aesCipher = Cipher.getInstance(Cipher.ALG_AES_BLOCK_128_CBC_NOPAD, false);
-		rsaSignature = Signature.getInstance(Signature.ALG_RSA_SHA_PKCS1, false);
+		// rsaSignature = Signature.getInstance(Signature.ALG_RSA_SHA_PKCS1, false);
 
 		cardNonce = JCSystem.makeTransientByteArray(CONSTANTS.NONCE_LENGTH, JCSystem.CLEAR_ON_DESELECT);
 		tmpKey = JCSystem.makeTransientByteArray(CONSTANTS.AES_KEY_LENGTH, JCSystem.CLEAR_ON_DESELECT);
@@ -80,37 +80,6 @@ public final class Crypto {
 		balance = (short) 0;
 
 		c = card;
-	}
-
-	boolean checkSignature() {
-		// TODO Check a signature
-		return false;
-	}
-
-	/**
-	 * Signs a message with the private key of <code>this</code> card.
-	 * 
-	 * @param data
-	 *            the data to be signed.
-	 * @param dataOff
-	 *            the offset of the data to be signed.
-	 * @param dataLen
-	 *            the length of the data to be signed.
-	 * @param sig
-	 *            the resulting signature.
-	 * @param sigOffset
-	 *            the offset of the resulting signature.
-	 * @return the length of the resulting signature in bytes.
-	 */
-	short sign(byte[] data, short dataOff, short dataLen, byte[] sig, short sigOffset) {
-		try {
-			rsaSignature.init(privKeyCard, Signature.MODE_SIGN);
-			return rsaSignature.sign(data, dataOff, dataLen, sig, sigOffset);
-		} catch (CryptoException ce) {
-			c.reset();
-			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, (byte) ce.getReason());
-			return 0;
-		}
 	}
 
 	/**
@@ -178,6 +147,10 @@ public final class Crypto {
 		return length;
 	}
 
+	/**
+	 * Symmetrically decrypts a plaintext into a ciphertext using a preconfigured AES session key.
+	 * @see #symEncrypt(byte[], short, short, byte[], short)
+	 */
 	short symDecrypt(byte[] ciphertext, short ctOff, short ctLen, byte[] plaintext, short ptOff) {
 
 		// Only use symmetric encryption when authenticated
@@ -255,15 +228,7 @@ public final class Crypto {
 
 	/**
 	 * Decrypts a ciphertext using public key cryptography.
-	 * 
-	 * @param ciphertext
-	 * @param ctOff
-	 * @param ctLen
-	 * @param plaintext
-	 * @param ptOff
-	 * @return Length of decrypted message in <code>plaintext</code>. Will be 0 if decryption fails.
-	 * @throws ISOException
-	 *             when a CryptoException is caught.
+	 * @see #pubEncrypt(Key, byte[], short, short, byte[], short)
 	 */
 	short pubDecrypt(byte[] ciphertext, short ctOff, short ctLen, byte[] plaintext, short ptOff) {
 		verifyBufferLength(ciphertext, ctOff, ctLen);
@@ -430,21 +395,21 @@ public final class Crypto {
 	 *         <code>false</code>otherwise.
 	 */
 	boolean authenticated() {
-		return authState[0] == CONSTANTS.AUTH_SUCCESS;
+		return authState[0] == CONSTANTS.SESSION_ESTABLISHED;
 	}
 
 	/**
 	 * Enables the cryptographic operations of <code>this</code> card. This makes it possible to make changes in the balance and retrieve it.
 	 */
 	void enable() {
-		authState[0] = CONSTANTS.AUTH_SUCCESS;
+		authState[0] = CONSTANTS.SESSION_ESTABLISHED;
 	}
 
 	/**
 	 * Disables the cryptographic operations of <code>this</code> card. This makes it impossible to make any changes in the balance or even retrieve it.
 	 */
 	void disable() {
-		authState[0] = CONSTANTS.AUTH_NOT_PERFORMED;
+		authState[0] = CONSTANTS.NO_ACTIVE_SESSION;
 	}
 
 	/**
@@ -494,7 +459,7 @@ public final class Crypto {
 	}
 
 	short getPubKeyCard(byte[] buffer, short offset) {
-		return Util.arrayCopyNonAtomic(pubKeyCard, (short) 0, buffer, offset, CONSTANTS.RSA_SIGNED_PUBKEY_LENGTH);
+		return Util.arrayCopyNonAtomic(pubKeyCard, (short) 0, buffer, offset, CONSTANTS.RSA_PUBKEY_LENGTH);
 	}
 
 	/**

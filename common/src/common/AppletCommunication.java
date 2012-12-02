@@ -14,8 +14,8 @@ import javax.smartcardio.ResponseAPDU;
 import javax.smartcardio.TerminalFactory;
 
 /**
- * Class representing a communication channel between
- * the card and a terminal
+ * Class representing a communication channel between the card and a terminal
+ * 
  * @author Geert Smelt
  * @author Robin Oostrum
  */
@@ -23,22 +23,21 @@ public class AppletCommunication {
 
 	static final byte[] APPLET_AID = { 0xB, 0x56, 0x56, 0x51, 0x23, 0x18 };
 
-	static final CommandAPDU SELECT_APDU = new CommandAPDU(
-    		(byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, APPLET_AID);
-	
+	static final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, APPLET_AID);
+
 	private Card card;
 	private CardChannel applet;
 	private TerminalCrypto crypto;
 	private AppletSession session;
 
 	private byte messageCounter;
-	
+
 	public AppletCommunication(AppletSession session) {
 		this.session = session;
 		this.session.setAppletCommunication(this);
 		this.crypto = new TerminalCrypto();
 	}
-	
+
 	public void waitForCard() {
 		System.out.print("Waiting for card...");
 		while (!connect()) {
@@ -47,7 +46,7 @@ public class AppletCommunication {
 		System.out.println();
 		System.out.println("Card found: " + applet.getCard());
 	}
-	
+
 	public boolean connect() {
 		try {
 			if (connectToCard()) {
@@ -65,14 +64,14 @@ public class AppletCommunication {
 		}
 		return false;
 	}
-	
+
 	private boolean requireCard() {
 		if (connectToCard()) {
 			return true;
 		}
 		return false;
 	}
-	
+
 	private boolean connectToCard() {
 		TerminalFactory tf = TerminalFactory.getDefault();
 		CardTerminals ct = tf.terminals();
@@ -92,7 +91,7 @@ public class AppletCommunication {
 			return false;
 		}
 	}
-	
+
 	private boolean selectApplet() {
 		ResponseAPDU resp;
 		try {
@@ -105,7 +104,7 @@ public class AppletCommunication {
 		}
 		return true;
 	}
-	
+
 	private void sleep(int x) {
 		try {
 			Thread.sleep(1000 * x);
@@ -115,7 +114,7 @@ public class AppletCommunication {
 			System.err.println("Terminal interrupted.");
 		}
 	}
-	
+
 	public ResponseAPDU sendCommandAPDU(CommandAPDU capdu) {
 		ResponseAPDU rapdu;
 		log(capdu);
@@ -127,12 +126,11 @@ public class AppletCommunication {
 			}
 			log(rapdu);
 		} catch (CardException e) {
-			throw new SecurityException("Communication error: "
-					+ e.getMessage());
+			throw new SecurityException("Communication error: " + e.getMessage());
 		}
 		return rapdu;
 	}
-	
+
 	public Response sendCommand(byte instruction, byte p1, byte p2, byte[] data) {
 		try {
 			// Always add instruction byte.
@@ -161,53 +159,50 @@ public class AppletCommunication {
 		}
 		return null;
 	}
-	
-	private Response verifyResponse(Response response, byte instruction)
-			throws SecurityException {
+
+	private Response verifyResponse(Response response, byte instruction) throws SecurityException {
 		// verify signature
 		byte[] responseData;
 		responseData = response.getData();
 		if (responseData == null) {
 			throw new SecurityException();
 		}
-		
+
 		if (session.isAuthenticated()) {
+			// TODO We do not use signatures when communicating with the card, only when logging.
 			if (responseData.length < CONSTANTS.RSA_SIGNATURE_LENGTH + 1) {
 				throw new SecurityException();
 			} else {
 				try {
-					responseData = crypto.verify(responseData, session
-							.getCardPublicKey());
+					responseData = crypto.verify(responseData, session.getCardPublicKey());
 				} catch (SignatureException e) {
 					throw new SecurityException();
 				}
 			}
 		}
-		
+
 		// instruction byte
 		if (responseData[responseData.length - 1] != instruction) {
 			throw new SecurityException();
 		}
-		response.setData(Arrays.copyOfRange(responseData, 0,
-				responseData.length - 1));
+		response.setData(Arrays.copyOfRange(responseData, 0, responseData.length - 1));
 		return response;
 	}
-	
+
 	public Response sendCommand(byte instruction, byte[] data) {
 		return sendCommand(instruction, (byte) 0, (byte) 0, data);
 	}
-	
+
 	public Response sendCommand(byte instruction, byte p1, byte p2) {
 		byte[] data = new byte[0];
 		return sendCommand(instruction, p1, p2, data);
 	}
-	
+
 	public Response sendCommand(byte instruction) {
 		return sendCommand(instruction, (byte) 0, (byte) 0);
 	}
-	
-	private Response processCommand(byte instruction, byte p1, byte p2,
-			byte[] data) {
+
+	private Response processCommand(byte instruction, byte p1, byte p2, byte[] data) {
 		ResponseAPDU rapdu;
 		Response resp;
 
@@ -217,10 +212,9 @@ public class AppletCommunication {
 			throw new SecurityException();
 		}
 		while (bytesToSend > CONSTANTS.APDU_DATA_SIZE_MAX) {
-			rapdu = sendSessionCommand(CONSTANTS.CLA_CHAIN_FIRST_OR_NEXT
-					| CONSTANTS.CLA_DEF, instruction, p1, p2, Arrays
-					.copyOfRange(data, bytesSent, bytesSent
-							+ CONSTANTS.APDU_DATA_SIZE_MAX));
+			// TODO Don't send class byte indicating chaining, we don't use that.
+			rapdu = sendSessionCommand(CONSTANTS.CLA_CHAIN_FIRST_OR_NEXT | CONSTANTS.CLA_DEF, instruction, p1, p2, Arrays.copyOfRange(data, bytesSent,
+					bytesSent + CONSTANTS.APDU_DATA_SIZE_MAX));
 			bytesToSend -= CONSTANTS.APDU_DATA_SIZE_MAX;
 			bytesSent += CONSTANTS.APDU_DATA_SIZE_MAX;
 			resp = processResponse(rapdu);
@@ -231,14 +225,12 @@ public class AppletCommunication {
 				throw new SecurityException();
 			}
 		}
-		rapdu = sendSessionCommand(CONSTANTS.CLA_CHAIN_LAST_OR_NONE
-				| CONSTANTS.CLA_DEF, instruction, p1, p2, Arrays.copyOfRange(
-				data, bytesSent, bytesSent + bytesToSend));
+		rapdu = sendSessionCommand(CONSTANTS.CLA_CHAIN_LAST_OR_NONE | CONSTANTS.CLA_DEF, instruction, p1, p2, Arrays.copyOfRange(data, bytesSent, bytesSent
+				+ bytesToSend));
 		return processResponse(rapdu);
 	}
-	
-	private ResponseAPDU sendSessionCommand(int cla, int ins, int p1, int p2,
-			byte[] data) {
+
+	private ResponseAPDU sendSessionCommand(int cla, int ins, int p1, int p2, byte[] data) {
 		if (data == null || data.length == 0) {
 			throw new SecurityException();
 		}
@@ -259,7 +251,7 @@ public class AppletCommunication {
 		CommandAPDU apdu = new CommandAPDU(cla, ins, p1, p2, msg);
 		return sendCommandAPDU(apdu);
 	}
-	
+
 	private Response processResponse(ResponseAPDU rapdu) {
 		if (rapdu == null) {
 			return null;
@@ -284,12 +276,10 @@ public class AppletCommunication {
 		}
 
 		// Process Response-APDUs indicating more data available at card.
-		while (rapdu.getSW1() == CONSTANTS.SW1_MORE_DATA
-				&& rapdu.getSW2() == CONSTANTS.SW2_MORE_DATA) {
+		// TODO Remove this, we do not chain
+		while (rapdu.getSW1() == CONSTANTS.SW1_MORE_DATA && rapdu.getSW2() == CONSTANTS.SW2_MORE_DATA) {
 			// Send retrieval command
-			rapdu = sendSessionCommand(CONSTANTS.CLA_CHAIN_LAST_OR_NONE
-					| CONSTANTS.CLA_DEF, CONSTANTS.INS_GET_RESPONSE, 0, 0,
-					ins);
+			rapdu = sendSessionCommand(CONSTANTS.CLA_CHAIN_LAST_OR_NONE | CONSTANTS.CLA_DEF, CONSTANTS.INS_GET_RESPONSE, 0, 0, ins);
 
 			// Add data from Response-APDU to already retrieved data.
 			byte[] rdata = rapdu.getData();
@@ -304,14 +294,13 @@ public class AppletCommunication {
 		}
 
 		if (data.length > 0) {
-			resp = new Response((byte) rapdu.getSW1(), (byte) rapdu.getSW2(),
-					data);
+			resp = new Response((byte) rapdu.getSW1(), (byte) rapdu.getSW2(), data);
 		} else {
 			resp = new Response((byte) rapdu.getSW1(), (byte) rapdu.getSW2());
 		}
 		return resp;
 	}
-	
+
 	private byte[] processSessionResponse(byte[] data) {
 		// Decrypt response
 		if (session.isAuthenticated()) {
@@ -327,12 +316,12 @@ public class AppletCommunication {
 		}
 		return data;
 	}
-	
+
 	void log(CommandAPDU obj) {
-		//
+		// TODO Actually log something
 	}
-	
+
 	void log(Object obj) {
-		//
+		// TODO Actually log something
 	}
 }
