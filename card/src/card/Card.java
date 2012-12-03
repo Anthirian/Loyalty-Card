@@ -453,11 +453,13 @@ public class Card extends Applet implements ISO7816 {
 		} // The length is correct
 
 		// check for my name in the data, just to make sure
-		if (buffer[CONSTANTS.AUTH_MSG_3_OFFSET_NAME_TERM] != CONSTANTS.NAME_CARD) {
+		if (Util.arrayCompare(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NAME_CARD, CONSTANTS.NAME_CARD, (short) 0, CONSTANTS.NAME_LENGTH) != 0) {
 			reset();
 			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_WRONG_PARTNER);
 			return 0;
-		} // the data contains my name
+		}
+		
+		// the data contains my name
 
 		// proceed to check the name of the terminal matches the one we found in step 1
 
@@ -486,9 +488,9 @@ public class Card extends Applet implements ISO7816 {
 
 		// Add both parties to the response
 		try {
-			buffer[CONSTANTS.AUTH_MSG_4_OFFSET_NAME_CARD] = CONSTANTS.NAME_CARD;
-			buffer[CONSTANTS.AUTH_MSG_4_OFFSET_NAME_TERM] = CONSTANTS.NAME_TERM;
-			responseSize += (2 * CONSTANTS.NAME_LENGTH);
+			responseSize += Util.arrayCopyNonAtomic(CONSTANTS.NAME_CARD, (short) 0, buffer, CONSTANTS.AUTH_MSG_4_OFFSET_NAME_CARD, CONSTANTS.NAME_LENGTH);
+			// TODO Naam van Terminal niet hardcoded gebruiken, maar lezen welke naam in het bericht stond.
+			responseSize += Util.arrayCopyNonAtomic(CONSTANTS.NAME_TERM, (short) 0, buffer, CONSTANTS.AUTH_MSG_4_OFFSET_NAME_TERM, CONSTANTS.NAME_LENGTH);
 		} catch (Exception e) {
 			reset();
 			throwException(((CardException) e).getReason());

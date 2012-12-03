@@ -439,7 +439,7 @@ public final class Crypto {
 	 */
 	short getCardName(byte[] buffer, short offset) {
 		try {
-			buffer[offset] = CONSTANTS.NAME_CARD;
+			Util.arrayCopyNonAtomic(CONSTANTS.NAME_CARD, (short) 0, buffer, offset, CONSTANTS.NAME_LENGTH);
 		} catch (Exception e) {
 			Card.throwException(((CardRuntimeException) e).getReason());
 			return 0;

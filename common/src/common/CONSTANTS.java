@@ -13,9 +13,9 @@ public class CONSTANTS {
 	public static final byte STATE_INIT = 0;
 	public static final byte STATE_ISSUED = 1;
 
-	public static final byte NAME_TERM = (byte) 0x84; // randomly chosen
-	public static final byte NAME_CARD = (byte) 0x29; // randomly chosen
-	public static final short NAME_LENGTH = (short) 1;
+	public static final byte[] NAME_TERM = {(byte) 0x54, (byte) 0x45, (byte) 0x52, (byte) 0x4d}; // Hex for "TERM"
+	public static final byte[] NAME_CARD = {(byte) 0x43, (byte) 0x41, (byte) 0x52, (byte) 0x44}; // Hex for "CARD"
+	public static final short NAME_LENGTH = (short) 4;
 
 	public static final byte CRYPTO_TYPE_SYMMETRIC = (byte) 0xC8;
 	public static final byte CRYPTO_TYPE_ASYMMETRIC = (byte) 0xC9;
