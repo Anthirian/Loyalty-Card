@@ -95,6 +95,7 @@ public class TerminalCrypto {
 	 * @param privKey private RSA key to sign data
 	 * @return signed data
 	 */
+	/*
 	public byte[] sign(byte[] data, RSAPrivateKey privKey) {
 		try {
 			RSASign.initSign(privKey);
@@ -121,6 +122,7 @@ public class TerminalCrypto {
 		}
 		return null;
 	}
+	*/
 	
 	/**
 	 * Verify a signature signed with a private RSA key, using the corresponding
@@ -311,8 +313,6 @@ public class TerminalCrypto {
 			printHex("Cleartext", data);
 			data = pk.encrypt(data, pubKey);
 			printHex("After encryption", data);
-			data = pk.sign(data, privKey);
-			printHex("After signing", data);
 			
 			try {
 				data = pk.verify(data, pubKey);

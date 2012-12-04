@@ -30,7 +30,7 @@ interface BackOffice {
 
 	Customer getCustomerByCard(int cardID) throws BackOfficeException;
 
-	byte[] sign(byte[] obj) throws BackOfficeException;
+	//byte[] sign(byte[] obj) throws BackOfficeException;
 
 	List<Customer> getCustomers() throws BackOfficeException;
 }

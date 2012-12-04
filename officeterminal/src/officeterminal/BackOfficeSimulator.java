@@ -230,6 +230,7 @@ class BackOfficeSimulator implements BackOffice {
 		return newCustomer;
 	}
 
+	/*
 	@Override
 	public byte[] sign(byte[] obj) throws BackOfficeException {
 		byte[] signedCert = crypto.sign(obj, (RSAPrivateKey) supermarketKeyPair
@@ -240,6 +241,7 @@ class BackOfficeSimulator implements BackOffice {
 		}
 		return signedCert;
 	}
+	*/
 
 	@Override
 	public short getCredits(Customer client) throws BackOfficeException {

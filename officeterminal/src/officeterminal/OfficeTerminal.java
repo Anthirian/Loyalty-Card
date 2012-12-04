@@ -2,17 +2,12 @@ package officeterminal;
 
 import common.AppletSession;
 import common.CLI;
-import common.CONSTANTS;
-import common.Formatter;
-import common.Response;
 import common.AppletCommunication;
 
 import java.io.IOException;
 import java.security.Security;
-import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,7 +16,8 @@ import javax.smartcardio.CardChannel;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 /**
- * The office terminal is able to register new customers, personalize cards, delete customers and view customer info (name, card id's and balance).
+ * The office terminal is able to register new customers, delete customers and 
+ * view customer info (name, card id's and balance).
  * 
  * @author Robin Oostrum
  * @author Geert Smelt
@@ -99,107 +95,6 @@ public class OfficeTerminal {
 	}
 
 	/**
-	 * TODO Delete this method. All key generation is done on the card. We should only retrieve and store the generated public key.
-	 */
-	public void personalizeCard(int clientID) {
-		Customer client;
-		try {
-			client = office.getCustomerByID(clientID);
-		} catch (BackOfficeException e) {
-			System.err.println("Failed loading client information:" + e.getMessage());
-			return;
-		}
-
-		com.waitForCard();
-
-		// Generate a card keypair, upload the private key to the card, and save
-		// the public key.
-		IDKeyPair cardKeyPair;
-		try {
-			cardKeyPair = office.issueNewCard(client);
-		} catch (BackOfficeException e) {
-			System.err.println("Error issuing new card: " + e.getMessage());
-			return;
-		}
-
-		RSAPublicKey customerPublicKey = (RSAPublicKey) cardKeyPair.getKeys().getPublic();
-		RSAPrivateCrtKey customerPrivateKey = (RSAPrivateCrtKey) cardKeyPair.getKeys().getPrivate();
-		// build the customer public key as it will be stored on the card (by sending only the modulus and exponents, we save a lot of bytes, so we can send the
-		// pubkey in a single APDU which is more efficient)
-		byte[] modulus = Formatter.getUnsignedBytes(customerPrivateKey.getModulus());
-		byte[] pubexp = Formatter.getUnsignedBytes(customerPublicKey.getPublicExponent());
-
-		// Same story for private key, only in this case we use CRT format.
-		byte[] crtCoefficient = Formatter.getUnsignedBytes(customerPrivateKey.getCrtCoefficient());
-		byte[] primeExpP = Formatter.getUnsignedBytes(customerPrivateKey.getPrimeExponentP());
-		byte[] primeP = Formatter.getUnsignedBytes(customerPrivateKey.getPrimeP());
-		byte[] primeExpQ = Formatter.getUnsignedBytes(customerPrivateKey.getPrimeExponentQ());
-		byte[] primeQ = Formatter.getUnsignedBytes(customerPrivateKey.getPrimeQ());
-
-		byte[] cardPublicKeyBytes = new byte[CONSTANTS.ID_LENGTH + CONSTANTS.RSA_KEY_MOD_LENGTH + CONSTANTS.RSA_KEY_PUBEXP_LENGTH];
-		Arrays.fill(cardPublicKeyBytes, (byte) 0);
-		System.arraycopy(Formatter.toByteArray(cardKeyPair.getCardID()), 0, cardPublicKeyBytes, CONSTANTS.RSA_SIGNED_PUBKEY_OFFSET_ID, CONSTANTS.ID_LENGTH);
-		System
-				.arraycopy(modulus, 0, cardPublicKeyBytes, CONSTANTS.RSA_SIGNED_PUBKEY_OFFSET_MOD + CONSTANTS.RSA_KEY_MOD_LENGTH - modulus.length,
-						modulus.length);
-		System
-				.arraycopy(pubexp, 0, cardPublicKeyBytes, CONSTANTS.RSA_SIGNED_PUBKEY_OFFSET_EXP + CONSTANTS.RSA_KEY_PUBEXP_LENGTH - pubexp.length,
-						pubexp.length);
-
-		byte[] signedCardPublicKeyBytes;
-		try {
-			signedCardPublicKeyBytes = office.sign(cardPublicKeyBytes);
-		} catch (BackOfficeException e) {
-			System.err.println("Error signing customer key: " + e.getMessage());
-			office.deleteCard(cardKeyPair.getCardID());
-			return;
-		}
-
-		byte[] cardPersonalizationData = new byte[CONSTANTS.PERS_MSG_LENGTH];
-		Arrays.fill(cardPersonalizationData, (byte) 0);
-		System.arraycopy(primeP, 0, cardPersonalizationData, CONSTANTS.PERS_MSG_OFFSET_PRIV_P + CONSTANTS.RSA_KEY_CRT_COMP_LENGTH - primeP.length,
-				primeP.length);
-		System.arraycopy(primeQ, 0, cardPersonalizationData, CONSTANTS.PERS_MSG_OFFSET_PRIV_Q + CONSTANTS.RSA_KEY_CRT_COMP_LENGTH - primeQ.length,
-				primeQ.length);
-		System.arraycopy(primeExpP, 0, cardPersonalizationData, CONSTANTS.PERS_MSG_OFFSET_PRIV_DP + CONSTANTS.RSA_KEY_CRT_COMP_LENGTH - primeExpP.length,
-				primeExpP.length);
-		System.arraycopy(primeExpQ, 0, cardPersonalizationData, CONSTANTS.PERS_MSG_OFFSET_PRIV_DQ + CONSTANTS.RSA_KEY_CRT_COMP_LENGTH - primeExpQ.length,
-				primeExpQ.length);
-		System.arraycopy(crtCoefficient, 0, cardPersonalizationData, CONSTANTS.PERS_MSG_OFFSET_PRIV_PQ + CONSTANTS.RSA_KEY_CRT_COMP_LENGTH
-				- crtCoefficient.length, crtCoefficient.length);
-		System.arraycopy(signedCardPublicKeyBytes, 0, cardPersonalizationData, CONSTANTS.PERS_MSG_OFFSET_PUBKEY, CONSTANTS.RSA_SIGNED_PUBKEY_LENGTH);
-
-		byte[] signedCardPersonalizationData;
-		try {
-			signedCardPersonalizationData = office.sign(cardPersonalizationData);
-		} catch (BackOfficeException e) {
-			System.err.println("Error signing card personalization data: " + e.getMessage());
-			office.deleteCard(cardKeyPair.getCardID());
-			return;
-		}
-
-		// Send the data to the card
-		if (signedCardPersonalizationData.length != (CONSTANTS.PERS_MSG_LENGTH + CONSTANTS.RSA_SIGNATURE_LENGTH)) {
-			System.err.println("Personalization data and / or signature invalid. Aborting.");
-			office.deleteCard(cardKeyPair.getCardID());
-			return;
-		}
-
-		System.out.println("Sending personalization data...");
-
-		Response response = com.sendCommand(CONSTANTS.INS_PERSONALIZE_WRITE, signedCardPersonalizationData);
-		if (response == null) {
-			System.out.println("Card already personalized.");
-			office.deleteCard(cardKeyPair.getCardID());
-		} else if (!response.success()) {
-			System.out.println("Error: " + Formatter.toHexString(response.getStatus()));
-			office.deleteCard(cardKeyPair.getCardID());
-		} else {
-			System.out.println("Card personalized");
-		}
-	}
-
-	/**
 	 * Register a new customer
 	 * 
 	 * @param cusName
@@ -224,8 +119,8 @@ public class OfficeTerminal {
 				System.err.println("Please do not interupt me!");
 			}
 
-			command = CLI.prompt("\nPlease enter command.\n(1) Register new customer |" + " (2) Personalize card | (3) View customer info |"
-					+ " (4) Delete customer | (9) Exit\n(?): ");
+			command = CLI.prompt("\nPlease enter command.\n(1) Register new customer |"
+					+ " (2) View customer info | (3) Delete customer | (9) Exit\n(?): ");
 
 			/* Register new customer */
 			if (Integer.parseInt(command) == 1) {
@@ -261,18 +156,8 @@ public class OfficeTerminal {
 
 			}
 
-			/* Personalize card: create and store keys on the card */
-			else if (Integer.parseInt(command) == 2) {
-				int client = Integer.parseInt(CLI.prompt("Please enter client's id: "));
-				if (client == -1)
-					continue mainmenu;
-				// ot.personalizeCard(client);
-				// TODO remove card personalization from options
-				CLI.showln("Card personalization is unsupported. All key generation is done on the card itself");
-			}
-
 			/* View more info about specific customer */
-			else if (Integer.parseInt(command) == 3) {
+			else if (Integer.parseInt(command) == 2) {
 				List<Customer> customers = ot.getCustomerIds();
 				for (Customer c : customers) {
 					System.out.println("Customer #" + c.getID() + ": " + c.getName());
@@ -296,7 +181,7 @@ public class OfficeTerminal {
 			}
 
 			/* Delete a specific customer */
-			else if (Integer.parseInt(command) == 4) {
+			else if (Integer.parseInt(command) == 3) {
 				int cust = Integer.parseInt(CLI.prompt("Please enter customer's id: "));
 				if (cust == -1)
 					continue mainmenu;

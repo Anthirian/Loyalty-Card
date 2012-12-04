@@ -1,6 +1,5 @@
 package common;
 
-import java.security.SignatureException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -141,16 +140,12 @@ public class AppletCommunication {
 				data = new byte[] { instruction };
 			}
 
-			// sign data + instruction byte when authenticated
-			if (session.isAuthenticated()) {
-				data = crypto.sign(data, session.getPrivateKey());
-			}
 			// send command
 			Response response = processCommand(instruction, p1, p2, data);
 			if (response == null) {
 				return null;
 			}
-			verifyResponse(response, instruction);
+			
 			return response;
 		} catch (SecurityException e) {
 			session.reset();
@@ -158,35 +153,6 @@ public class AppletCommunication {
 			// System.err.println(e.getMessage());
 		}
 		return null;
-	}
-
-	private Response verifyResponse(Response response, byte instruction) throws SecurityException {
-		// verify signature
-		byte[] responseData;
-		responseData = response.getData();
-		if (responseData == null) {
-			throw new SecurityException();
-		}
-
-		if (session.isAuthenticated()) {
-			// TODO We do not use signatures when communicating with the card, only when logging.
-			if (responseData.length < CONSTANTS.RSA_SIGNATURE_LENGTH + 1) {
-				throw new SecurityException();
-			} else {
-				try {
-					responseData = crypto.verify(responseData, session.getCardPublicKey());
-				} catch (SignatureException e) {
-					throw new SecurityException();
-				}
-			}
-		}
-
-		// instruction byte
-		if (responseData[responseData.length - 1] != instruction) {
-			throw new SecurityException();
-		}
-		response.setData(Arrays.copyOfRange(responseData, 0, responseData.length - 1));
-		return response;
 	}
 
 	public Response sendCommand(byte instruction, byte[] data) {
@@ -204,29 +170,18 @@ public class AppletCommunication {
 
 	private Response processCommand(byte instruction, byte p1, byte p2, byte[] data) {
 		ResponseAPDU rapdu;
-		Response resp;
 
 		int bytesToSend = data.length;
-		int bytesSent = 0;
+
 		if (bytesToSend > CONSTANTS.DATA_SIZE_MAX) {
 			throw new SecurityException();
 		}
-		while (bytesToSend > CONSTANTS.APDU_DATA_SIZE_MAX) {
-			// TODO Don't send class byte indicating chaining, we don't use that.
-			rapdu = sendSessionCommand(CONSTANTS.CLA_CHAIN_FIRST_OR_NEXT | CONSTANTS.CLA_DEF, instruction, p1, p2, Arrays.copyOfRange(data, bytesSent,
-					bytesSent + CONSTANTS.APDU_DATA_SIZE_MAX));
-			bytesToSend -= CONSTANTS.APDU_DATA_SIZE_MAX;
-			bytesSent += CONSTANTS.APDU_DATA_SIZE_MAX;
-			resp = processResponse(rapdu);
-			if (resp == null) {
-				return null;
-			}
-			if (!resp.success()) {
-				throw new SecurityException();
-			}
+		
+		if (bytesToSend > CONSTANTS.APDU_DATA_SIZE_MAX) {
+			throw new SecurityException();
 		}
-		rapdu = sendSessionCommand(CONSTANTS.CLA_CHAIN_LAST_OR_NONE | CONSTANTS.CLA_DEF, instruction, p1, p2, Arrays.copyOfRange(data, bytesSent, bytesSent
-				+ bytesToSend));
+		
+		rapdu = sendSessionCommand(CONSTANTS.CLA_DEF, instruction, p1, p2, data);
 		return processResponse(rapdu);
 	}
 
@@ -259,45 +214,17 @@ public class AppletCommunication {
 
 		Response resp;
 
-		// Prepare response array with single instruction byte for MORE_DATA
-		// commands.
-		byte[] ins = new byte[] { CONSTANTS.INS_GET_RESPONSE };
-		// Add signature if the session is authenticated.
-		if (session.isAuthenticated()) {
-			ins = crypto.sign(ins, session.getPrivateKey());
-		}
-
-		// Retrieve data from first Response-APDU.
+		// Retrieve data from Response-APDU.
 		byte[] data = rapdu.getData();
+		
 		if (data.length > 0) {
 			data = processSessionResponse(data);
-		} else {
-			// System.out.println("Response-APDU contained no data.");
-		}
-
-		// Process Response-APDUs indicating more data available at card.
-		// TODO Remove this, we do not chain
-		while (rapdu.getSW1() == CONSTANTS.SW1_MORE_DATA && rapdu.getSW2() == CONSTANTS.SW2_MORE_DATA) {
-			// Send retrieval command
-			rapdu = sendSessionCommand(CONSTANTS.CLA_CHAIN_LAST_OR_NONE | CONSTANTS.CLA_DEF, CONSTANTS.INS_GET_RESPONSE, 0, 0, ins);
-
-			// Add data from Response-APDU to already retrieved data.
-			byte[] rdata = rapdu.getData();
-			if (rdata.length > 0) {
-				rdata = processSessionResponse(rdata);
-			} else {
-				// System.out.println("*RESPONSE-CHAINED* Response-APDU contained no data.");
-			}
-			int dataLength = data.length;
-			data = Arrays.copyOf(data, dataLength + rdata.length);
-			System.arraycopy(rdata, 0, data, dataLength, rdata.length);
-		}
-
-		if (data.length > 0) {
 			resp = new Response((byte) rapdu.getSW1(), (byte) rapdu.getSW2(), data);
 		} else {
+			System.out.println("Response-APDU contained no data.");
 			resp = new Response((byte) rapdu.getSW1(), (byte) rapdu.getSW2());
 		}
+
 		return resp;
 	}
 

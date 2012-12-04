@@ -1,6 +1,5 @@
 package common;
 
-import java.nio.ByteBuffer;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
@@ -130,11 +129,8 @@ public class AppletSession {
 		byte[] receivedTerminalName = Arrays.copyOfRange(data, 
 				CONSTANTS.AUTH_MSG_2_OFFSET_NAME_TERM, CONSTANTS.NAME_LENGTH);
 		
-		ByteBuffer bb = ByteBuffer.wrap(receivedTerminalName);
-		short checkName = bb.getShort();
-		
 		// verify decrypted_challenge[1] equals terminal name
-		if (!(checkName == CONSTANTS.NAME_TERM)) {
+		if (!(Arrays.equals(receivedTerminalName,CONSTANTS.NAME_TERM))) {
 			throw new SecurityException();
 		}
 		
@@ -169,7 +165,8 @@ public class AppletSession {
 		byte[] data = new byte[CONSTANTS.AUTH_MSG_3_TOTAL_LENGTH];
 		System.arraycopy(from, 0, data, CONSTANTS.AUTH_MSG_3_OFFSET_NAME_TERM, 
 				CONSTANTS.NAME_LENGTH);
-		System.arraycopy(nameCard, 0, data, CONSTANTS.NAME_CARD, CONSTANTS.NAME_LENGTH);
+		System.arraycopy(nameCard, 0, data, CONSTANTS.AUTH_MSG_3_OFFSET_NAME_CARD, 
+				CONSTANTS.NAME_LENGTH);
 		System.arraycopy(nonceCard, 0, data, CONSTANTS.AUTH_MSG_3_OFFSET_NC, 
 				CONSTANTS.NONCE_LENGTH);
 		System.arraycopy(nonceTerminal, 0, data, CONSTANTS.AUTH_MSG_3_OFFSET_NT, 

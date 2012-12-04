@@ -198,7 +198,7 @@ public class SupermarketTerminal {
 					"Cannot remove credits, card not authenticated.");
 		}
 		byte[] creditsData = Formatter.toByteArray(credits);
-		creditsData = crypto.sign(creditsData, privKey);
+		//creditsData = crypto.sign(creditsData, privKey);
 		Response resp = com.sendCommand(CONSTANTS.INS_BAL_DEC,
 				creditsData);
 		if (resp == null) {
@@ -219,7 +219,7 @@ public class SupermarketTerminal {
 					"Cannot add credits, card not authenticated.");
 		}
 		byte[] creditsData = Formatter.toByteArray(credits);
-		creditsData = crypto.sign(creditsData, privKey);
+		//creditsData = crypto.sign(creditsData, privKey);
 		Response resp = com.sendCommand(CONSTANTS.INS_BAL_INC,
 				creditsData);
 		if (resp == null) {
