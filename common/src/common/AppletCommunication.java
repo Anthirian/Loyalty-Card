@@ -20,7 +20,7 @@ import javax.smartcardio.TerminalFactory;
  */
 public class AppletCommunication {
 
-	static final byte[] APPLET_AID = { 0xB, 0x56, 0x56, 0x51, 0x23, 0x18 };
+	static final byte[] APPLET_AID = { 0x11, (byte) 0x86, (byte) 0x86, (byte) 0x81, 0x35, 0x24 };
 
 	static final CommandAPDU SELECT_APDU = new CommandAPDU((byte) 0x00, (byte) 0xA4, (byte) 0x04, (byte) 0x00, APPLET_AID);
 
@@ -57,7 +57,7 @@ public class AppletCommunication {
 			}
 		} catch (SecurityException e) {
 			System.err.println();
-			System.err.println(e.getMessage());
+			System.err.println("Security exception: " + e.getMessage());
 			sleep(1);
 			System.out.print("Waiting for card...");
 		}
@@ -95,6 +95,7 @@ public class AppletCommunication {
 		ResponseAPDU resp;
 		try {
 			resp = applet.transmit(SELECT_APDU);
+			System.out.println(resp);
 		} catch (CardException e) {
 			return false;
 		}
@@ -108,8 +109,6 @@ public class AppletCommunication {
 		try {
 			Thread.sleep(1000 * x);
 		} catch (InterruptedException e) {
-			// This is not a SIGINT, but Thread.interrupt() which we only use on
-			// the VehicleMotor.
 			System.err.println("Terminal interrupted.");
 		}
 	}
@@ -182,6 +181,7 @@ public class AppletCommunication {
 		}
 		
 		rapdu = sendSessionCommand(CONSTANTS.CLA_DEF, instruction, p1, p2, data);
+		System.out.println("Terminal received: " + rapdu);
 		return processResponse(rapdu);
 	}
 

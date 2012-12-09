@@ -1,5 +1,7 @@
 package common;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
@@ -10,6 +12,7 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
 
 import javax.crypto.BadPaddingException;
@@ -32,7 +35,7 @@ public class TerminalCrypto {
 	private Cipher AESCipher;
 	private KeyGenerator AESKeyGen;
 	private IvParameterSpec AESIvSpec;
-	private Signature RSASign;
+	//private Signature RSASign;
 	
 	public TerminalCrypto() {
 		// initialize cipher classes
@@ -42,7 +45,7 @@ public class TerminalCrypto {
 			AESKeyGen = KeyGenerator.getInstance("AES");
 			AESKeyGen.init(128);
 			AESIvSpec = new IvParameterSpec(new byte[16]);
-			RSASign = Signature.getInstance("SHA1withRSA");
+			//RSASign = Signature.getInstance("SHA1withRSA");
 		} catch (NoSuchAlgorithmException e) {
 			// e.printStackTrace();
 		} catch (NoSuchPaddingException e) {
@@ -132,6 +135,7 @@ public class TerminalCrypto {
 	 * @return data without the signature
 	 * @throws SignatureException
 	 */
+	/*
 	public byte[] verify(byte[] data, RSAPublicKey pubKey)
 			throws SignatureException {
 		try {
@@ -154,6 +158,7 @@ public class TerminalCrypto {
 		}
 		throw new SignatureException();
 	}
+	*/
 	
 	/**
 	 * Generate a random nonce
@@ -301,12 +306,29 @@ public class TerminalCrypto {
 		try {
 			// generate keys
 			KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
-			generator.initialize(1024);
-			KeyPair keypair = generator.generateKeyPair();
-			RSAPublicKey pubKey = (RSAPublicKey) keypair.getPublic();
-			RSAPrivateKey privKey = (RSAPrivateKey) keypair.getPrivate();
+			generator.initialize(512);
+			KeyPair keypair;
+			try {
+				keypair = KeyManager.loadKeyPair("/home/javacard/workspace/Loyalty-Card/officeterminal/keys/","Supermarket");
+				RSAPublicKey pubKey = (RSAPublicKey) keypair.getPublic();
+				//RSAPrivateKey privKey = (RSAPrivateKey) keypair.getPrivate();
+				
+				System.out.println("Exponent: " + pubKey.getPublicExponent());
+				System.out.println("Modulus: " + pubKey.getModulus());
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InvalidKeySpecException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
 			
 			// perform encryption and decryption with test data
+			/*
 			TerminalCrypto pk = new TerminalCrypto();
 			byte[] data = new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
 					12, 13, 14, 15, 16 };
@@ -314,15 +336,18 @@ public class TerminalCrypto {
 			data = pk.encrypt(data, pubKey);
 			printHex("After encryption", data);
 			
+			/*
 			try {
 				data = pk.verify(data, pubKey);
 			} catch (SignatureException e) {
 				e.printStackTrace();
 			}
-			
+			*/
+			/*
 			//printHex("After verify", data);
 			data = pk.decrypt(data, privKey);
 			printHex("After decryption", data);
+			*/
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		}

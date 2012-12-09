@@ -7,9 +7,9 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 
+import common.CONSTANTS;
 import common.CLI;
 import common.KeyManager;
-import common.CONSTANTS;
 import common.AppletCommunication;
 import common.AppletSession;
 import common.Formatter;

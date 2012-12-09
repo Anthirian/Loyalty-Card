@@ -7,12 +7,11 @@ import javacard.framework.CardException;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
+import javacard.framework.SystemException;
 import javacard.framework.TransactionException;
 import javacard.framework.UserException;
 import javacard.framework.Util;
 import javacard.security.Key;
-
-import common.CONSTANTS;
 
 /**
  * Java Card applet to be used for the Loyalty Card system
@@ -43,10 +42,14 @@ public class Card extends Applet implements ISO7816 {
 
 	public Card() {
 		crypto = new Crypto(this);
-		tmp = JCSystem.makeTransientByteArray(CONSTANTS.APDU_DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT);
-		authBuf = JCSystem.makeTransientByteArray(CONSTANTS.DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT); // TODO Ensure correct buffer length
-		authState = JCSystem.makeTransientByteArray((short) 2, JCSystem.CLEAR_ON_DESELECT);
-		authPartnerID = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
+		try {
+			tmp = JCSystem.makeTransientByteArray(CONSTANTS.APDU_DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT);
+			authBuf = JCSystem.makeTransientByteArray(CONSTANTS.DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT); // TODO Ensure correct buffer length
+			authState = JCSystem.makeTransientByteArray((short) 2, JCSystem.CLEAR_ON_DESELECT);
+			authPartnerID = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
+		} catch (SystemException e) {
+			throwException(e.getReason());
+		}
 	}
 
 	public static void install(byte[] bArray, short bOffset, byte bLength) {
@@ -57,7 +60,7 @@ public class Card extends Applet implements ISO7816 {
 	public void process(APDU apdu) throws ISOException, APDUException {
 		// Ignore the CommandAPDU that selects this applet on the card
 		if (selectingApplet()) {
-			reset();
+			//reset();
 			return;
 		}
 		short responseSize = 0;

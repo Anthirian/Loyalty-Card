@@ -71,6 +71,8 @@ public class AppletSession {
 			// initiate authentication
 			byte[] nonceCard = authStep1(from);
 
+			System.out.println("Received nonce from card: " + nonceCard);
+			
 			// when there is no correct message sent, the nonce is null
 			if (nonceCard != null) {
 
@@ -101,7 +103,9 @@ public class AppletSession {
 		
 		Response response;
 		try {
-			response = com.sendCommand(from);
+			System.out.println("Hoi ik ben Bob");
+			response = com.sendCommand(CONSTANTS.INS_AUTHENTICATE, from, 
+					CONSTANTS.P2_AUTHENTICATE_STEP1);
 		} catch (Exception e) {
 			throw new SecurityException();
 		}

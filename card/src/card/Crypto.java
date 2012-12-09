@@ -13,7 +13,6 @@ import javacard.security.RSAPublicKey;
 import javacard.security.RandomData; //import javacard.security.Signature;
 import javacardx.crypto.Cipher;
 
-import common.CONSTANTS;
 
 /**
  * The cryptography class handles all cryptographic operations, including but not limited to key generation, nonce generation, encryption and decryption.

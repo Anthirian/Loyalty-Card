@@ -26,7 +26,7 @@ public class KeyManager {
 	public static final String PRIVKEY_BASENAME = "privkey_rsa.";
 
 	public KeyManager() {
-		this.path = "./keys/";
+		this.path = "/home/javacard/workspace/Loyalty-Card/officeterminal/keys/";
 	}
 	
 	public KeyManager(String path) {
