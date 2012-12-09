@@ -161,8 +161,12 @@ public class Card extends Applet implements ISO7816 {
 			case CONSTANTS.INS_ISSUE:
 				crypto.issueCard();
 				break;
+			case CONSTANTS.INS_AUTHENTICATE:
+				responseSize = authenticate(p1, p2, length, buffer);
+				break;
 			case CONSTANTS.INS_GET_PUBKEY:
 				responseSize = crypto.getPubKeyCard(buffer);
+				break;
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
 			}
@@ -181,6 +185,9 @@ public class Card extends Applet implements ISO7816 {
 				break;
 			case CONSTANTS.INS_BAL_CHECK:
 				responseSize = checkCredits(buffer);
+				break;
+			case CONSTANTS.INS_GET_PUBKEY:
+				responseSize = crypto.getPubKeyCard(buffer);
 				break;
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
