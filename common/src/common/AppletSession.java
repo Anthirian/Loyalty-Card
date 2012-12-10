@@ -66,7 +66,7 @@ public class AppletSession {
 	}
 
 	// handshake protocol
-	public boolean authenticate(byte from) {
+	public boolean authenticate(byte[] from) {
 		try {
 			// initiate authentication
 			byte[] nonceCard = authStep1(from);
@@ -98,14 +98,17 @@ public class AppletSession {
 		return false;
 	}
 	
-	private byte[] authStep1 (byte from) {
-		// send authentication apdu
+	private byte[] authStep1 (byte[] from) {
+		// send authentication apdu		
+		byte[] sendData = new byte[CONSTANTS.AUTH_MSG_1_TOTAL_LENGTH];
+		System.arraycopy(from, 0, sendData, CONSTANTS.AUTH_MSG_1_OFFSET_NAME_TERM, 
+				CONSTANTS.NAME_LENGTH);
 		
 		Response response;
 		try {
 			System.out.println("Hoi ik ben Bob");
-			response = com.sendCommand(CONSTANTS.INS_AUTHENTICATE, from,
-					CONSTANTS.P1_AUTHENTICATE_CARD);
+			response = com.sendCommand(CONSTANTS.INS_AUTHENTICATE, 
+					CONSTANTS.P1_AUTHENTICATE_CARD, CONSTANTS.P2_AUTHENTICATE_STEP1, sendData);
 			//response = com.sendCommand(CONSTANTS.INS_GET_PUBKEY);
 			//response = com.sendCommand(CONSTANTS.INS_ISSUE);
 		} catch (Exception e) {
@@ -165,7 +168,7 @@ public class AppletSession {
 		return cardNonce;
 	}
 
-	private byte[] authStep3(byte from, byte[] nameCard, byte[] nonceCard, 
+	private byte[] authStep3(byte[] from, byte[] nameCard, byte[] nonceCard, 
 			byte[] nonceTerminal) {
 		// build the message to be sent to the card
 		byte[] data = new byte[CONSTANTS.AUTH_MSG_3_TOTAL_LENGTH];
@@ -184,8 +187,8 @@ public class AppletSession {
 		// send the command
 		Response response;
 		try {
-			response = com.sendCommand(CONSTANTS.INS_AUTHENTICATE, from, 
-					CONSTANTS.P2_AUTHENTICATE_STEP2, data);
+			response = com.sendCommand(CONSTANTS.INS_AUTHENTICATE,
+					CONSTANTS.P1_AUTHENTICATE_CARD, CONSTANTS.P2_AUTHENTICATE_STEP2, data);
 		} catch (Exception e) {
 			throw new SecurityException();
 		}

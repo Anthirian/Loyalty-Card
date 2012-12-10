@@ -363,15 +363,14 @@ public class Card extends Applet implements ISO7816 {
 	 * @param to
 	 *            the partner to authenticate to.
 	 * @param length
-	 *            the length of the ciphertext in <code>buffer</code>.
+	 *            the length of <code>buffer</code>.
 	 * @param buffer
-	 *            the buffer that holds the ciphertext of the first message.
+	 *            the buffer that holds the first message.
 	 * @return the length of the challenge to send back to the terminal, 0 if an exception occurred.
 	 * @throws UserException
 	 *             if P1 of the CommandAPDU is incorrect
 	 */
 	private short authStep2(byte to, short length, byte[] buffer) throws UserException {
-		short decLength = 0;
 		short responseSize = 0;
 		// if (to != CONSTANTS.P1_AUTHENTICATE_CARD && to != CONSTANTS.P1_AUTHENTICATE_OFFICE) {
 		if (to != CONSTANTS.P1_AUTHENTICATE_CARD) { // "to" should be me (the card)
@@ -379,19 +378,15 @@ public class Card extends Applet implements ISO7816 {
 			UserException.throwIt(CONSTANTS.SW2_AUTH_WRONG_PARTNER);
 			return 0;
 		}
-		throwException((short) 43);
-		// Decrypt the ciphertext from buffer
-		decLength = crypto.pubDecrypt(buffer, (short) 0, length, buffer, (short) 0);
 
-		// Buffer now holds the plaintext
-		// decLength now holds the length of the plaintext
-
-		// Check that the plaintext only contains 1 byte as we expect only an identification from the terminal (C -> T : T)
-		if (decLength != CONSTANTS.NAME_LENGTH) {
+		// Check that the message only contains 1 byte as we expect only an identification from the terminal (C -> T : T)
+		/*
+		if (length != CONSTANTS.NAME_LENGTH) {
 			reset();
 			throwException(CONSTANTS.SW1_WRONG_LENGTH, CONSTANTS.SW2_AUTH_INCORRECT_MESSAGE_LENGTH);
 			return 0;
 		}
+		*/
 
 		// When my partner != 0, something is wrong so return 0
 		if (authState[AUTH_PARTNER] != 0) {
@@ -399,17 +394,20 @@ public class Card extends Applet implements ISO7816 {
 			return 0;
 		}
 
-		// if the length of the plaintext is correct, assume it to be the name of the terminal
+		// if the length of the message is correct, assume it to be the name of the terminal
 		// terminal has to send its name as defined in the constants
-		authPartnerID[0] = buffer[CONSTANTS.AUTH_MSG_1_OFFSET_NAME_TERM];
+		try {
+			authPartnerID[0] = buffer[CONSTANTS.AUTH_MSG_1_OFFSET_NAME_TERM];
+		} catch (Exception e) {
+			throwException(CONSTANTS.SW1_WRONG_PARAMETERS);
+		}
 
 		// flush the buffer to prepare for response
 		clear(buffer);
-
-		// prepare the response
-
+				
 		// Add this card's name
 		responseSize += crypto.getCardName(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NAME_CARD);
+		throwException((short) 42);
 		// Add the previously found partner name
 		responseSize += Util.arrayCopyNonAtomic(authPartnerID, (short) 0, buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NAME_TERM, CONSTANTS.NAME_LENGTH);
 

@@ -59,7 +59,7 @@ public final class Crypto {
 		pubKeyCard = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false); 
         privKeyCard = (RSAPrivateCrtKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_CRT_PRIVATE, KeyBuilder.LENGTH_RSA_512, false); 
                    
-        KeyPair keypair = new KeyPair(KeyPair.ALG_RSA_CRT, KeyBuilder.LENGTH_RSA_512); 
+        KeyPair keypair = new KeyPair(KeyPair.ALG_RSA, KeyBuilder.LENGTH_RSA_512); 
         keypair.genKeyPair(); 
         pubKeyCard = (RSAPublicKey) keypair.getPublic(); 
         privKeyCard = (RSAPrivateCrtKey) keypair.getPrivate();
@@ -235,7 +235,7 @@ public final class Crypto {
 	short pubDecrypt(byte[] ciphertext, short ctOff, short ctLen, byte[] plaintext, short ptOff) {
 		verifyBufferLength(ciphertext, ctOff, ctLen);
 		verifyBufferLength(plaintext, ptOff);
-
+		
 		short numberOfBytes = 0;
 
 		try {
@@ -445,6 +445,7 @@ public final class Crypto {
 		try {
 			Util.arrayCopyNonAtomic(CONSTANTS.NAME_CARD, (short) 0, buffer, offset, CONSTANTS.NAME_LENGTH);
 		} catch (Exception e) {
+			Card.throwException((short) 43);
 			Card.throwException(((CardRuntimeException) e).getReason());
 			return 0;
 		}

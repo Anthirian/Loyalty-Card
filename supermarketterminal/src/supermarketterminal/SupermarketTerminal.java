@@ -93,7 +93,7 @@ public class SupermarketTerminal {
 		com.waitForCard();
 		// authenticate the card and the terminal
 		System.out.println("Authenticating card...");
-		if (!session.authenticate(CONSTANTS.P1_AUTHENTICATE_SUPERMARKET)) {
+		if (!session.authenticate(CONSTANTS.NAME_TERM)) {
 			System.err.println("Authentication error.");
 			return;
 		}
@@ -272,7 +272,7 @@ public class SupermarketTerminal {
 	 * @param arg
 	 */
 	public static void main(String[] arg) {
-		// Change integer to x to represent another supermarket with ID x
+		// Change integer to x to represent another cash register with ID x
 		new SupermarketTerminal(1);
 	}
 }
