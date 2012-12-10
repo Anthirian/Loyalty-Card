@@ -47,6 +47,7 @@ public class Card extends Applet implements ISO7816 {
 			authBuf = JCSystem.makeTransientByteArray(CONSTANTS.DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT); // TODO Ensure correct buffer length
 			authState = JCSystem.makeTransientByteArray((short) 2, JCSystem.CLEAR_ON_DESELECT);
 			authPartnerID = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
+			NT = JCSystem.makeTransientByteArray((short) CONSTANTS.NONCE_LENGTH, JCSystem.CLEAR_ON_DESELECT);
 		} catch (SystemException e) {
 			throwException(e.getReason());
 		}
@@ -122,7 +123,7 @@ public class Card extends Applet implements ISO7816 {
 		} catch (UserException e) {
 			throwException(e.getReason());
 		}
-
+		
 		// Ensure the buffer size is sufficient
 		if (responseSize > buf.length) {
 			reset();
@@ -148,8 +149,6 @@ public class Card extends Applet implements ISO7816 {
 	 * @param buffer
 	 *            the buffer holding the data relevant to the instruction.
 	 * @return the size of the data for the ResponseAPDU.
-	 * @throws UserException
-	 *             when the length of the amount of credits is longer than two bytes, i.e. not a short.
 	 */
 	private short handleInstruction(byte cla, byte ins, byte p1, byte p2, short length, byte[] buffer) throws UserException {
 		short responseSize = 0;
@@ -159,7 +158,7 @@ public class Card extends Applet implements ISO7816 {
 			// When initializing the only supported instruction is the issuance of the card
 			switch (ins) {
 			case CONSTANTS.INS_ISSUE:
-				crypto.issueCard();
+				responseSize = crypto.issueCard();
 				break;
 			case CONSTANTS.INS_AUTHENTICATE:
 				responseSize = authenticate(p1, p2, length, buffer);
@@ -250,6 +249,7 @@ public class Card extends Applet implements ISO7816 {
 			sendRSAEncrypted(crypto.getPubKeySupermarket(), data, length, apdu);
 			break;
 		default:
+			
 			sendAESEncrypted(data, length, apdu);
 			break;
 		}
@@ -379,7 +379,7 @@ public class Card extends Applet implements ISO7816 {
 			UserException.throwIt(CONSTANTS.SW2_AUTH_WRONG_PARTNER);
 			return 0;
 		}
-
+		throwException((short) 43);
 		// Decrypt the ciphertext from buffer
 		decLength = crypto.pubDecrypt(buffer, (short) 0, length, buffer, (short) 0);
 

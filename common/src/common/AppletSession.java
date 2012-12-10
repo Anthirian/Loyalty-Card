@@ -104,8 +104,10 @@ public class AppletSession {
 		Response response;
 		try {
 			System.out.println("Hoi ik ben Bob");
-			response = com.sendCommand(CONSTANTS.INS_AUTHENTICATE, from, 
-					CONSTANTS.P2_AUTHENTICATE_STEP1);
+			response = com.sendCommand(CONSTANTS.INS_AUTHENTICATE, from,
+					CONSTANTS.P1_AUTHENTICATE_CARD);
+			//response = com.sendCommand(CONSTANTS.INS_GET_PUBKEY);
+			//response = com.sendCommand(CONSTANTS.INS_ISSUE);
 		} catch (Exception e) {
 			throw new SecurityException();
 		}

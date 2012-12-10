@@ -8,6 +8,7 @@ import javacard.security.AESKey;
 import javacard.security.CryptoException;
 import javacard.security.Key;
 import javacard.security.KeyBuilder;
+import javacard.security.KeyPair;
 import javacard.security.RSAPrivateCrtKey;
 import javacard.security.RSAPublicKey;
 import javacard.security.RandomData; //import javacard.security.Signature;
@@ -36,8 +37,8 @@ public final class Crypto {
 	private RSAPrivateCrtKey privKeyCard;
 
 	/** The public key of the supermarket */
-	private RSAPublicKey pubKeyCompany;
-	private RSAPublicKey pubKeyCar;
+	private RSAPublicKey pubKeySupermarket;
+	private RSAPublicKey pubKeyCard;
 
 	/** The state of authentication of this card, an array of size one */
 	private byte[] authState;
@@ -55,14 +56,14 @@ public final class Crypto {
 	 *            The card to link the cryptographic functions to.
 	 */
 	public Crypto(Card card) {
-		// pubKeyCompany = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
-		// pubKeyCompany.setExponent(SupermarketRSAKey.getExponent(), (short) 0, (short) SupermarketRSAKey.getExponent().length);
-		// pubKeyCompany.setModulus(SupermarketRSAKey.getModulus(), (short) 0, (short) SupermarketRSAKey.getModulus().length);
-		// pubKeyCar = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false);
-		// pubKeyCard = new byte[CONSTANTS.RSA_SIGNED_PUBKEY_LENGTH];
-
-		privKeyCard = (RSAPrivateCrtKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_CRT_PRIVATE, KeyBuilder.LENGTH_RSA_512, false);
-
+		pubKeyCard = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false); 
+        privKeyCard = (RSAPrivateCrtKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_CRT_PRIVATE, KeyBuilder.LENGTH_RSA_512, false); 
+                   
+        KeyPair keypair = new KeyPair(KeyPair.ALG_RSA_CRT, KeyBuilder.LENGTH_RSA_512); 
+        keypair.genKeyPair(); 
+        pubKeyCard = (RSAPublicKey) keypair.getPublic(); 
+        privKeyCard = (RSAPrivateCrtKey) keypair.getPrivate();
+        
 		sessionKey = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES_TRANSIENT_DESELECT, KeyBuilder.LENGTH_AES_128, false);
 
 		rsaCipher = Cipher.getInstance(Cipher.ALG_RSA_PKCS1, false);
@@ -74,7 +75,7 @@ public final class Crypto {
 
 		random = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
 
-		authState = JCSystem.makeTransientByteArray((short) 0, JCSystem.CLEAR_ON_DESELECT);
+		authState = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
 
 		balance = (short) 0;
 
@@ -400,14 +401,18 @@ public final class Crypto {
 	/**
 	 * Changes the card to the <code>ISSUED</code> state.
 	 * 
+	 * @return 1 if the card was issued successfully<br />
+	 *         0 if an error occurred.
 	 * @throws ISOException
 	 *             if the card has already been issued.
 	 */
-	void issueCard() {
+	short issueCard() {
 		if (c.state != CONSTANTS.STATE_ISSUED) {
 			c.state = CONSTANTS.STATE_ISSUED;
+			return 1;
 		} else {
 			Card.throwException(CONSTANTS.SW1_COMMAND_NOT_ALLOWED_00, CONSTANTS.SW2_ALREADY_ISSUED);
+			return 0;
 		}
 	}
 
@@ -491,7 +496,7 @@ public final class Crypto {
 	 */
 	public short getPubKeyCard(byte[] buf) {
 		short totalLength = 0;
-		if (!pubKeyCar.isInitialized()) {
+		if (!pubKeyCard.isInitialized()) {
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_AUTH_PARTNER_KEY_NOT_INIT);
 			return 0;
 		} else if (buf.length < CONSTANTS.RSA_PUBKEY_LENGTH) {
@@ -500,10 +505,12 @@ public final class Crypto {
 		} else {
 			// everything is fine
 			// TODO Copy ID of Card into the Key as well
-			totalLength += pubKeyCar.getExponent(buf, CONSTANTS.RSA_PUBKEY_OFFSET_EXP);
-			totalLength += pubKeyCar.getModulus(buf, CONSTANTS.RSA_PUBKEY_OFFSET_MOD);
+			totalLength += Util.arrayCopyNonAtomic(CONSTANTS.NAME_CARD, (short) 0, buf, CONSTANTS.RSA_PUBKEY_OFFSET_ID, CONSTANTS.NAME_LENGTH);
+			totalLength += pubKeyCard.getExponent(buf, CONSTANTS.RSA_PUBKEY_OFFSET_EXP);
+			totalLength += pubKeyCard.getModulus(buf, CONSTANTS.RSA_PUBKEY_OFFSET_MOD);
 			return totalLength;
 		}
+		
 	}
 
 	/**
@@ -514,8 +521,8 @@ public final class Crypto {
 	 *             if the supermarket's public key is not initialized yet.
 	 */
 	RSAPublicKey getPubKeySupermarket() {
-		if (pubKeyCompany.isInitialized()) {
-			return pubKeyCompany;
+		if (pubKeySupermarket.isInitialized()) {
+			return pubKeySupermarket;
 		} else {
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_AUTH_PARTNER_KEY_NOT_INIT);
 			return null;
