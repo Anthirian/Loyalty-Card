@@ -4,6 +4,7 @@ import javacard.framework.APDU;
 import javacard.framework.APDUException;
 import javacard.framework.Applet;
 import javacard.framework.CardException;
+import javacard.framework.CardRuntimeException;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
@@ -29,11 +30,10 @@ public class Card extends Applet implements ISO7816 {
 	byte[] tmp;
 	byte[] authBuf;
 	byte[] authState;
-	byte[] authPartnerID;
 
 	/** Holds the terminal nonce generated during authentication step four. */
 	byte[] NT;
-	
+
 	/** Holds the terminal's name received in authentication step four */
 	byte[] partnerName;
 
@@ -49,7 +49,6 @@ public class Card extends Applet implements ISO7816 {
 			tmp = JCSystem.makeTransientByteArray(CONSTANTS.APDU_DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT);
 			authBuf = JCSystem.makeTransientByteArray(CONSTANTS.DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT); // TODO Ensure correct buffer length
 			authState = JCSystem.makeTransientByteArray((short) 2, JCSystem.CLEAR_ON_DESELECT);
-			authPartnerID = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
 			NT = JCSystem.makeTransientByteArray((short) CONSTANTS.NONCE_LENGTH, JCSystem.CLEAR_ON_DESELECT);
 			partnerName = JCSystem.makeTransientByteArray(CONSTANTS.NAME_LENGTH, JCSystem.CLEAR_ON_DESELECT);
 		} catch (SystemException e) {
@@ -65,7 +64,7 @@ public class Card extends Applet implements ISO7816 {
 	public void process(APDU apdu) throws ISOException, APDUException {
 		// Ignore the CommandAPDU that selects this applet on the card
 		if (selectingApplet()) {
-			//reset();
+			// reset();
 			return;
 		}
 		short responseSize = 0;
@@ -127,7 +126,7 @@ public class Card extends Applet implements ISO7816 {
 		} catch (UserException e) {
 			throwException(e.getReason());
 		}
-		
+
 		// Ensure the buffer size is sufficient
 		if (responseSize > buf.length) {
 			reset();
@@ -253,7 +252,7 @@ public class Card extends Applet implements ISO7816 {
 			sendRSAEncrypted(crypto.getPubKeySupermarket(), data, length, apdu);
 			break;
 		default:
-			
+
 			sendAESEncrypted(data, length, apdu);
 			break;
 		}
@@ -385,12 +384,8 @@ public class Card extends Applet implements ISO7816 {
 
 		// Check that the message only contains 1 byte as we expect only an identification from the terminal (C -> T : T)
 		/*
-		if (length != CONSTANTS.NAME_LENGTH) {
-			reset();
-			throwException(CONSTANTS.SW1_WRONG_LENGTH, CONSTANTS.SW2_AUTH_INCORRECT_MESSAGE_LENGTH);
-			return 0;
-		}
-		*/
+		 * if (length != CONSTANTS.NAME_LENGTH) { reset(); throwException(CONSTANTS.SW1_WRONG_LENGTH, CONSTANTS.SW2_AUTH_INCORRECT_MESSAGE_LENGTH); return 0; }
+		 */
 
 		// When my partner != 0, something is wrong so return 0
 		if (authState[AUTH_PARTNER] != 0) {
@@ -401,24 +396,28 @@ public class Card extends Applet implements ISO7816 {
 		// if the length of the message is correct, assume it to be the name of the terminal
 		// terminal has to send its name as defined in the constants
 		try {
-			authPartnerID[0] = buffer[CONSTANTS.AUTH_MSG_1_OFFSET_NAME_TERM];
+			Util.arrayCopyNonAtomic(buffer, CONSTANTS.AUTH_MSG_1_OFFSET_NAME_TERM, partnerName, (short) 0, CONSTANTS.NAME_LENGTH);
 		} catch (Exception e) {
 			throwException(CONSTANTS.SW1_WRONG_PARAMETERS);
 		}
 
 		// flush the buffer to prepare for response
 		clear(buffer);
-				
-		// Add this card's name
-		responseSize += crypto.getCardName(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NAME_CARD);
-		throwException((short) 42);
-		// Add the previously found partner name
-		responseSize += Util.arrayCopyNonAtomic(authPartnerID, (short) 0, buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NAME_TERM, CONSTANTS.NAME_LENGTH);
 
-		// generate a nonce and store it in the buffer
-		crypto.generateCardNonce();
-		responseSize += crypto.getCardNonce(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NC);
+		try {
+			// Add this card's name
+			responseSize += crypto.getCardName(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NAME_CARD);
 
+			// Add the previously found partner name
+			responseSize += Util.arrayCopyNonAtomic(partnerName, (short) 0, buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NAME_TERM, CONSTANTS.NAME_LENGTH);
+
+			// generate a nonce and store it in the buffer
+			crypto.generateCardNonce();
+			responseSize += crypto.getCardNonce(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NC);
+		} catch (Exception e) {
+			throwException(((CardRuntimeException) e).getReason());
+		}
+		
 		// buffer should now hold challenge1 (destined for the terminal): [ C | T | N_C ]
 		return responseSize;
 	}
@@ -471,13 +470,13 @@ public class Card extends Applet implements ISO7816 {
 			return 0;
 		}
 		// the data contains my name
-		
+
 		// store the name of the terminal locally to ensure sending to the same partner
 		if (Util.arrayCopyNonAtomic(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NAME_TERM, partnerName, (short) 0, CONSTANTS.NAME_LENGTH) == CONSTANTS.NAME_LENGTH) {
 			reset();
-			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_WRONG_PARTNER);
+			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_INCORRECT_MESSAGE_LENGTH);
 			return 0;
-		}		
+		}
 
 		// proceed to check the name of the terminal matches the one we found in step 1
 
@@ -723,7 +722,7 @@ public class Card extends Applet implements ISO7816 {
 		clear(tmp);
 		clear(authBuf);
 		clear(authState);
-		clear(authPartnerID);
+		clear(partnerName);
 		crypto.clearSessionData();
 		JCSystem.commitTransaction();
 	}
