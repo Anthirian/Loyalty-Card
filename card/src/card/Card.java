@@ -375,20 +375,17 @@ public class Card extends Applet implements ISO7816 {
 	 */
 	private short authStep2(byte to, short length, byte[] buffer) throws UserException {
 		short responseSize = 0;
-		// if (to != CONSTANTS.P1_AUTHENTICATE_CARD && to != CONSTANTS.P1_AUTHENTICATE_OFFICE) {
-		if (to != CONSTANTS.P1_AUTHENTICATE_CARD) { // "to" should be me (the card)
+		
+		// "to" should be me (the card)
+		if (to != CONSTANTS.P1_AUTHENTICATE_CARD) { 
 			reset();
 			UserException.throwIt(CONSTANTS.SW2_AUTH_WRONG_PARTNER);
 			return 0;
 		}
 
-		// Check that the message only contains 1 byte as we expect only an identification from the terminal (C -> T : T)
-		/*
-		 * if (length != CONSTANTS.NAME_LENGTH) { reset(); throwException(CONSTANTS.SW1_WRONG_LENGTH, CONSTANTS.SW2_AUTH_INCORRECT_MESSAGE_LENGTH); return 0; }
-		 */
-
 		// When my partner != 0, something is wrong so return 0
 		if (authState[AUTH_PARTNER] != 0) {
+			reset();
 			throwException(CONSTANTS.SW1_WRONG_PARAMETERS, CONSTANTS.SW2_AUTH_WRONG_PARTNER);
 			return 0;
 		}
@@ -451,7 +448,8 @@ public class Card extends Applet implements ISO7816 {
 			reset();
 			Card.throwException(CONSTANTS.SW1_WRONG_PARAMETERS, CONSTANTS.SW2_AUTH_WRONG_PARTNER);
 			return 0;
-		} // I am the recipient, so continue
+		} 
+		// I am the recipient, so continue
 
 		// Decrypt the message
 		length = crypto.pubDecrypt(buffer, (short) 0, length, buffer, (short) 0);
@@ -461,7 +459,8 @@ public class Card extends Applet implements ISO7816 {
 			reset();
 			throwException(CONSTANTS.SW1_WRONG_LE_FIELD_00, CONSTANTS.SW2_AUTH_WRONG_2);
 			return 0;
-		} // The length is correct
+		}
+		// The length is correct
 
 		// check for my name in the data, just to make sure
 		if (Util.arrayCompare(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NAME_CARD, CONSTANTS.NAME_CARD, (short) 0, CONSTANTS.NAME_LENGTH) != 0) {
@@ -493,7 +492,8 @@ public class Card extends Applet implements ISO7816 {
 			reset();
 			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_WRONG_NONCE);
 			return 0;
-		} // the nonce was verified successfully
+		}
+		// the nonce was verified successfully
 
 		// Store the terminal nonce locally
 		Util.arrayCopyNonAtomic(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NT, NT, (short) 0, CONSTANTS.NONCE_LENGTH);
@@ -501,20 +501,20 @@ public class Card extends Applet implements ISO7816 {
 		// We have checked and received everything needed to build the response, so clear the buffer
 		clear(buffer);
 
-		// Prepare the response
-
-		// Add both parties to the response
+		// Prepare the response		
 		try {
+			// Add both parties to the response
 			responseSize += Util.arrayCopyNonAtomic(CONSTANTS.NAME_CARD, (short) 0, buffer, CONSTANTS.AUTH_MSG_4_OFFSET_NAME_CARD, CONSTANTS.NAME_LENGTH);
 			responseSize += Util.arrayCopyNonAtomic(partnerName, (short) 0, buffer, CONSTANTS.AUTH_MSG_4_OFFSET_NAME_TERM, CONSTANTS.NAME_LENGTH);
+			// Append the Terminal's nonce
+			responseSize += Util.arrayCopyNonAtomic(NT, (short) 0, buffer, CONSTANTS.AUTH_MSG_4_OFFSET_NT, CONSTANTS.NONCE_LENGTH);
 		} catch (Exception e) {
 			reset();
 			throwException(((CardException) e).getReason());
 			return 0;
 		}
 
-		// Append the Terminal's nonce
-		responseSize += Util.arrayCopyNonAtomic(NT, (short) 0, buffer, CONSTANTS.AUTH_MSG_4_OFFSET_NT, CONSTANTS.NONCE_LENGTH);
+		
 
 		// Generate the AES-128 session key and copy it into the buffer
 		crypto.generateSessionKey();
