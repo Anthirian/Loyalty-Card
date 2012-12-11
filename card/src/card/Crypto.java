@@ -505,7 +505,6 @@ public final class Crypto {
 			return 0;
 		} else {
 			// everything is fine
-			// TODO Copy ID of Card into the Key as well
 			totalLength += Util.arrayCopyNonAtomic(CONSTANTS.NAME_CARD, (short) 0, buf, CONSTANTS.RSA_PUBKEY_OFFSET_ID, CONSTANTS.NAME_LENGTH);
 			totalLength += pubKeyCard.getExponent(buf, CONSTANTS.RSA_PUBKEY_OFFSET_EXP);
 			totalLength += pubKeyCard.getModulus(buf, CONSTANTS.RSA_PUBKEY_OFFSET_MOD);

@@ -33,6 +33,9 @@ public class Card extends Applet implements ISO7816 {
 
 	/** Holds the terminal nonce generated during authentication step four. */
 	byte[] NT;
+	
+	/** Holds the terminal's name received in authentication step four */
+	byte[] partnerName;
 
 	/** The applet state (<code>INIT</code> or <code>ISSUED</code>). */
 	byte state = CONSTANTS.STATE_INIT;
@@ -48,6 +51,7 @@ public class Card extends Applet implements ISO7816 {
 			authState = JCSystem.makeTransientByteArray((short) 2, JCSystem.CLEAR_ON_DESELECT);
 			authPartnerID = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
 			NT = JCSystem.makeTransientByteArray((short) CONSTANTS.NONCE_LENGTH, JCSystem.CLEAR_ON_DESELECT);
+			partnerName = JCSystem.makeTransientByteArray(CONSTANTS.NAME_LENGTH, JCSystem.CLEAR_ON_DESELECT);
 		} catch (SystemException e) {
 			throwException(e.getReason());
 		}
@@ -466,8 +470,14 @@ public class Card extends Applet implements ISO7816 {
 			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_WRONG_PARTNER);
 			return 0;
 		}
-		
 		// the data contains my name
+		
+		// store the name of the terminal locally to ensure sending to the same partner
+		if (Util.arrayCopyNonAtomic(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NAME_TERM, partnerName, (short) 0, CONSTANTS.NAME_LENGTH) == CONSTANTS.NAME_LENGTH) {
+			reset();
+			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_WRONG_PARTNER);
+			return 0;
+		}		
 
 		// proceed to check the name of the terminal matches the one we found in step 1
 
@@ -497,8 +507,7 @@ public class Card extends Applet implements ISO7816 {
 		// Add both parties to the response
 		try {
 			responseSize += Util.arrayCopyNonAtomic(CONSTANTS.NAME_CARD, (short) 0, buffer, CONSTANTS.AUTH_MSG_4_OFFSET_NAME_CARD, CONSTANTS.NAME_LENGTH);
-			// TODO Naam van Terminal niet hardcoded gebruiken, maar lezen welke naam in het bericht stond.
-			responseSize += Util.arrayCopyNonAtomic(CONSTANTS.NAME_TERM, (short) 0, buffer, CONSTANTS.AUTH_MSG_4_OFFSET_NAME_TERM, CONSTANTS.NAME_LENGTH);
+			responseSize += Util.arrayCopyNonAtomic(partnerName, (short) 0, buffer, CONSTANTS.AUTH_MSG_4_OFFSET_NAME_TERM, CONSTANTS.NAME_LENGTH);
 		} catch (Exception e) {
 			reset();
 			throwException(((CardException) e).getReason());
