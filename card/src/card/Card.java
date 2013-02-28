@@ -27,8 +27,14 @@ public class Card extends Applet implements ISO7816 {
 	private static final short AUTH_PARTNER = 1;
 
 	/* Buffers in RAM */
+	
+	/** Holds at most one APDU worth of data */
 	byte[] tmp;
+	
+	/** Holds the messages exchanged during the authentication process */
 	byte[] authBuf;
+	
+	/** Holds the current authentication status */
 	byte[] authState;
 
 	/** Holds the terminal nonce generated during authentication step four. */
@@ -375,9 +381,9 @@ public class Card extends Applet implements ISO7816 {
 	 */
 	private short authStep2(byte to, short length, byte[] buffer) throws UserException {
 		short responseSize = 0;
-		
+
 		// "to" should be me (the card)
-		if (to != CONSTANTS.P1_AUTHENTICATE_CARD) { 
+		if (to != CONSTANTS.P1_AUTHENTICATE_CARD) {
 			reset();
 			UserException.throwIt(CONSTANTS.SW2_AUTH_WRONG_PARTNER);
 			return 0;
@@ -414,7 +420,7 @@ public class Card extends Applet implements ISO7816 {
 		} catch (Exception e) {
 			throwException(((CardRuntimeException) e).getReason());
 		}
-		
+
 		// buffer should now hold challenge1 (destined for the terminal): [ C | T | N_C ]
 		return responseSize;
 	}
@@ -448,7 +454,7 @@ public class Card extends Applet implements ISO7816 {
 			reset();
 			Card.throwException(CONSTANTS.SW1_WRONG_PARAMETERS, CONSTANTS.SW2_AUTH_WRONG_PARTNER);
 			return 0;
-		} 
+		}
 		// I am the recipient, so continue
 
 		// Decrypt the message
@@ -501,7 +507,7 @@ public class Card extends Applet implements ISO7816 {
 		// We have checked and received everything needed to build the response, so clear the buffer
 		clear(buffer);
 
-		// Prepare the response		
+		// Prepare the response
 		try {
 			// Add both parties to the response
 			responseSize += Util.arrayCopyNonAtomic(CONSTANTS.NAME_CARD, (short) 0, buffer, CONSTANTS.AUTH_MSG_4_OFFSET_NAME_CARD, CONSTANTS.NAME_LENGTH);
@@ -513,8 +519,6 @@ public class Card extends Applet implements ISO7816 {
 			throwException(((CardException) e).getReason());
 			return 0;
 		}
-
-		
 
 		// Generate the AES-128 session key and copy it into the buffer
 		crypto.generateSessionKey();
