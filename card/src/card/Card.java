@@ -100,7 +100,7 @@ public class Card extends Applet implements ISO7816 {
 		}
 
 		if (responseSize != 0) {
-			send(ins, authBuf, responseSize, apdu);
+			send(ins, ins == CONSTANTS.INS_AUTHENTICATE ? authBuf : tmp, responseSize, apdu);
 		} else {
 			throwException(CONSTANTS.SW1_NO_PRECISE_DIAGNOSIS, CONSTANTS.SW2_INTERNAL_ERROR);
 		}
