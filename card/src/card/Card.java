@@ -257,6 +257,7 @@ public class Card extends Applet implements ISO7816 {
 	private void send(short type, byte[] data, short length, APDU apdu) {
 		switch (type) {
 		case CONSTANTS.INS_AUTHENTICATE:
+			throwException(data[5]);
 			sendRSAEncrypted(crypto.getPubKeySupermarket(), data, length, apdu);
 			break;
 		default:

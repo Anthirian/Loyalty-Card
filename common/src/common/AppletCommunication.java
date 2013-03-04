@@ -228,9 +228,7 @@ public class AppletCommunication {
 		byte[] data = rapdu.getData();
 
 		if (data.length > 0) {
-			System.out.println("ik ben nog niet voorbij processSessionResponse!!!");
 			data = processSessionResponse(data);
-			System.out.println("ik ben voorbij processSessionResponse!!!");
 			resp = new Response((byte) rapdu.getSW1(), (byte) rapdu.getSW2(), data);
 		} else {
 			System.out.println("Response-APDU contained no data.");
@@ -245,6 +243,7 @@ public class AppletCommunication {
 		if (session.isAuthenticated()) {
 			data = crypto.decryptAES(data, session.getSessionKey());
 		}
+		/*
 		// Check and increment messagecounter
 		if (messageCounter != data[0]) {
 			throw new SecurityException();
@@ -253,6 +252,8 @@ public class AppletCommunication {
 			// Strip the message counter from response.
 			data = Arrays.copyOfRange(data, 1, data.length);
 		}
+		*/
+		
 		return data;
 	}
 

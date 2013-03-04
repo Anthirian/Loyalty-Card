@@ -455,7 +455,6 @@ public final class Crypto {
 		try {
 			Util.arrayCopyNonAtomic(CONSTANTS.NAME_CARD, (short) 0, buffer, offset, CONSTANTS.NAME_LENGTH);
 		} catch (Exception e) {
-			Card.throwException((short) 43);
 			Card.throwException(((CardRuntimeException) e).getReason());
 			return 0;
 		}
