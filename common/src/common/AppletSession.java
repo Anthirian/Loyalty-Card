@@ -125,7 +125,7 @@ public class AppletSession {
 		}
 		
 		// decrypt the data with own private key
-		byte[] data = crypto.decrypt(response.getData(), this.privKey);
+		byte[] data = crypto.decryptRSA(response.getData(), this.privKey);
 		
 		if (data == null) {
 			throw new SecurityException();
