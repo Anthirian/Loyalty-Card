@@ -531,7 +531,6 @@ public final class Crypto {
 	 *             if the supermarket's public key is not initialized yet.
 	 */
 	RSAPublicKey getPubKeySupermarket() {
-		Card.throwException((short) 42);
 		if (pubKeySupermarket.isInitialized()) {
 			return pubKeySupermarket;
 		} else {
