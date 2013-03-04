@@ -229,7 +229,7 @@ public class Card extends Applet implements ISO7816 {
 		}
 		Util.arrayCopyNonAtomic(buffer, ISO7816.OFFSET_CDATA, data, offset, readCount);
 		offset += readCount;
-
+			
 		while (apdu.getCurrentState() == APDU.STATE_PARTIAL_INCOMING) {
 			readCount = apdu.receiveBytes(ISO7816.OFFSET_CDATA);
 			if (offset + readCount > data.length) {
@@ -398,11 +398,12 @@ public class Card extends Applet implements ISO7816 {
 		// if the length of the message is correct, assume it to be the name of the terminal
 		// terminal has to send its name as defined in the constants
 		try {
-			Util.arrayCopyNonAtomic(buffer, CONSTANTS.AUTH_MSG_1_OFFSET_NAME_TERM, partnerName, (short) 0, CONSTANTS.NAME_LENGTH);
+			Util.arrayCopyNonAtomic(buffer, CONSTANTS.AUTH_MSG_1_OFFSET_NAME_TERM, 
+					partnerName, (short) 0, CONSTANTS.NAME_LENGTH);
 		} catch (Exception e) {
 			throwException(CONSTANTS.SW1_WRONG_PARAMETERS);
 		}
-
+		
 		// flush the buffer to prepare for response
 		clear(buffer);
 

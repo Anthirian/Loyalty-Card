@@ -70,7 +70,7 @@ public class AppletSession {
 		try {
 			// initiate authentication
 			byte[] nonceCard = authStep1(from);
-
+			
 			System.out.println("Received nonce from card: " + nonceCard);
 			
 			// when there is no correct message sent, the nonce is null
@@ -114,8 +114,9 @@ public class AppletSession {
 		} catch (Exception e) {
 			throw new SecurityException();
 		}
-
+		
 		if (response == null) {
+			System.out.println("response leeg");
 			throw new SecurityException();
 		}
 
@@ -197,7 +198,7 @@ public class AppletSession {
 		if (!response.success()) {
 			throw new SecurityException();
 		}
-
+		
 		// decrypt the response with the terminal private key
 		data = crypto.decrypt(response.getData(), this.privKey);
 

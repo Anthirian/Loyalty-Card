@@ -131,6 +131,7 @@ public class AppletCommunication {
 
 	public Response sendCommand(byte instruction, byte p1, byte p2, byte[] data) {
 		try {
+			/*
 			// Always add instruction byte.
 			if (data != null && data.length > 0) {
 				data = Arrays.copyOf(data, data.length + 1);
@@ -138,13 +139,13 @@ public class AppletCommunication {
 			} else {
 				data = new byte[] { instruction };
 			}
-
+			*/
+			
 			// send command
 			Response response = processCommand(instruction, p1, p2, data);
 			if (response == null) {
 				return null;
 			}
-			
 			return response;
 		} catch (SecurityException e) {
 			session.reset();
@@ -179,7 +180,7 @@ public class AppletCommunication {
 		if (bytesToSend > CONSTANTS.APDU_DATA_SIZE_MAX) {
 			throw new SecurityException();
 		}
-
+		
 		rapdu = sendSessionCommand(CONSTANTS.CLA_DEF, instruction, p1, p2, data);
 		System.out.println("Terminal received: " + rapdu);
 		return processResponse(rapdu);
@@ -189,7 +190,8 @@ public class AppletCommunication {
 		if (data == null || data.length == 0) {
 			throw new SecurityException();
 		}
-		byte[] msg = new byte[data.length + 1];
+		
+		/*
 		// prepend counter byte
 		msg[0] = messageCounter;
 		// increment message counter
@@ -198,12 +200,20 @@ public class AppletCommunication {
 			throw new SecurityException();
 		}
 		System.arraycopy(data, 0, msg, 1, data.length);
-
+		
 		if (session.isAuthenticated()) {
 			msg = crypto.encryptAES(msg, session.getSessionKey());
 		}
 		
 		CommandAPDU apdu = new CommandAPDU(cla, ins, p1, p2, msg);
+		*/
+		
+		
+		if (session.isAuthenticated()) {
+			data = crypto.encryptAES(data, session.getSessionKey());
+		}
+		
+		CommandAPDU apdu = new CommandAPDU(cla, ins, p1, p2, data);
 		
 		return sendCommandAPDU(apdu);
 	}
@@ -214,12 +224,13 @@ public class AppletCommunication {
 		}
 
 		Response resp;
-
 		// Retrieve data from Response-APDU.
 		byte[] data = rapdu.getData();
-		
+
 		if (data.length > 0) {
+			System.out.println("ik ben nog niet voorbij processSessionResponse!!!");
 			data = processSessionResponse(data);
+			System.out.println("ik ben voorbij processSessionResponse!!!");
 			resp = new Response((byte) rapdu.getSW1(), (byte) rapdu.getSW2(), data);
 		} else {
 			System.out.println("Response-APDU contained no data.");
