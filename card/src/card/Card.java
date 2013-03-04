@@ -133,6 +133,7 @@ public class Card extends Applet implements ISO7816 {
 			throwException(ISO7816.SW_FILE_FULL);
 			return 0;
 		}
+		
 		return responseSize;
 	}
 
@@ -198,6 +199,7 @@ public class Card extends Applet implements ISO7816 {
 		default:
 			ISOException.throwIt(SW_CONDITIONS_NOT_SATISFIED);
 		}
+		
 		return responseSize;
 	}
 
@@ -301,12 +303,10 @@ public class Card extends Applet implements ISO7816 {
 		} else {
 			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_ALREADY_PERFORMED);
 		}
-
 		if (length > CONSTANTS.APDU_DATA_SIZE_MAX || length <= 0) {
 			throwException(ISO7816.SW_WRONG_LENGTH);
 			return;
 		}
-
 		apdu.setOutgoing();
 		apdu.setOutgoingLength(length);
 		apdu.sendBytesLong(data, (short) 0, length);
@@ -337,7 +337,7 @@ public class Card extends Applet implements ISO7816 {
 			UserException.throwIt(e.getReason());
 			return 0;
 		}
-
+		
 		if (outLength == 0) {
 			reset();
 			UserException.throwIt((short) CONSTANTS.SW2_AUTH_OTHER_ERROR);
@@ -351,7 +351,6 @@ public class Card extends Applet implements ISO7816 {
 			if (authState[AUTH_STEP] == CONSTANTS.P2_AUTHENTICATE_STEP2) {
 				crypto.enable();
 			}
-
 			return outLength;
 		}
 	}
@@ -438,6 +437,7 @@ public class Card extends Applet implements ISO7816 {
 	 */
 	private short authStep4(byte to, short length, byte[] buffer) throws UserException {
 		short responseSize = 0;
+		
 		if (authState[AUTH_PARTNER] != to) {
 			reset();
 			UserException.throwIt((short) CONSTANTS.SW2_AUTH_WRONG_PARTNER);

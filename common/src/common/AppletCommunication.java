@@ -179,7 +179,7 @@ public class AppletCommunication {
 		if (bytesToSend > CONSTANTS.APDU_DATA_SIZE_MAX) {
 			throw new SecurityException();
 		}
-		
+
 		rapdu = sendSessionCommand(CONSTANTS.CLA_DEF, instruction, p1, p2, data);
 		System.out.println("Terminal received: " + rapdu);
 		return processResponse(rapdu);
@@ -202,8 +202,9 @@ public class AppletCommunication {
 		if (session.isAuthenticated()) {
 			msg = crypto.encryptAES(msg, session.getSessionKey());
 		}
-
+		
 		CommandAPDU apdu = new CommandAPDU(cla, ins, p1, p2, msg);
+		
 		return sendCommandAPDU(apdu);
 	}
 

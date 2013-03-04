@@ -56,15 +56,25 @@ public final class Crypto {
 	 *            The card to link the cryptographic functions to.
 	 */
 	public Crypto(Card card) {
-		pubKeyCard = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, KeyBuilder.LENGTH_RSA_512, false); 
-        privKeyCard = (RSAPrivateCrtKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_CRT_PRIVATE, KeyBuilder.LENGTH_RSA_512, false); 
+		pubKeyCard = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, 
+				KeyBuilder.LENGTH_RSA_512, false); 
+        privKeyCard = (RSAPrivateCrtKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_CRT_PRIVATE, 
+        		KeyBuilder.LENGTH_RSA_512, false); 
                    
-        KeyPair keypair = new KeyPair(KeyPair.ALG_RSA, KeyBuilder.LENGTH_RSA_512); 
+        KeyPair keypair = new KeyPair(KeyPair.ALG_RSA_CRT, KeyBuilder.LENGTH_RSA_512); 
         keypair.genKeyPair(); 
         pubKeyCard = (RSAPublicKey) keypair.getPublic(); 
         privKeyCard = (RSAPrivateCrtKey) keypair.getPrivate();
         
-		sessionKey = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES_TRANSIENT_DESELECT, KeyBuilder.LENGTH_AES_128, false);
+        pubKeySupermarket = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC,
+        		KeyBuilder.LENGTH_RSA_512, false);
+        pubKeySupermarket.setExponent(SupermarketRSAKey.getExponent(), (short) 0,
+        		(short) SupermarketRSAKey.getExponent().length);
+        pubKeySupermarket.setModulus(SupermarketRSAKey.getModulus(), (short) 0,
+        		(short) SupermarketRSAKey.getModulus().length);
+        
+		sessionKey = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES_TRANSIENT_DESELECT, 
+				KeyBuilder.LENGTH_AES_128, false);
 
 		rsaCipher = Cipher.getInstance(Cipher.ALG_RSA_PKCS1, false);
 		aesCipher = Cipher.getInstance(Cipher.ALG_AES_BLOCK_128_CBC_NOPAD, false);
@@ -521,6 +531,7 @@ public final class Crypto {
 	 *             if the supermarket's public key is not initialized yet.
 	 */
 	RSAPublicKey getPubKeySupermarket() {
+		Card.throwException((short) 42);
 		if (pubKeySupermarket.isInitialized()) {
 			return pubKeySupermarket;
 		} else {
