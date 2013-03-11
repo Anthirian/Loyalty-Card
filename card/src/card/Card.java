@@ -100,7 +100,7 @@ public class Card extends Applet implements ISO7816 {
 		}
 
 		if (responseSize != 0) {
-			send(ins, authBuf, responseSize, apdu);
+			send(ins, ins == CONSTANTS.INS_AUTHENTICATE ? authBuf : tmp, responseSize, apdu);
 		} else {
 			throwException(CONSTANTS.SW1_NO_PRECISE_DIAGNOSIS, CONSTANTS.SW2_INTERNAL_ERROR);
 		}
@@ -139,6 +139,7 @@ public class Card extends Applet implements ISO7816 {
 			throwException(ISO7816.SW_FILE_FULL);
 			return 0;
 		}
+		
 		return responseSize;
 	}
 
@@ -206,6 +207,7 @@ public class Card extends Applet implements ISO7816 {
 		default:
 			ISOException.throwIt(SW_CONDITIONS_NOT_SATISFIED);
 		}
+		
 		return responseSize;
 	}
 
@@ -229,7 +231,7 @@ public class Card extends Applet implements ISO7816 {
 		}
 		Util.arrayCopyNonAtomic(buffer, ISO7816.OFFSET_CDATA, data, offset, readCount);
 		offset += readCount;
-
+			
 		while (apdu.getCurrentState() == APDU.STATE_PARTIAL_INCOMING) {
 			readCount = apdu.receiveBytes(ISO7816.OFFSET_CDATA);
 			if (offset + readCount > data.length) {
@@ -309,12 +311,10 @@ public class Card extends Applet implements ISO7816 {
 		} else {
 			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_ALREADY_PERFORMED);
 		}
-
 		if (length > CONSTANTS.APDU_DATA_SIZE_MAX || length <= 0) {
 			throwException(ISO7816.SW_WRONG_LENGTH);
 			return;
 		}
-
 		apdu.setOutgoing();
 		apdu.setOutgoingLength(length);
 		apdu.sendBytesLong(data, (short) 0, length);
@@ -345,7 +345,7 @@ public class Card extends Applet implements ISO7816 {
 			UserException.throwIt(e.getReason());
 			return 0;
 		}
-
+		
 		if (outLength == 0) {
 			reset();
 			UserException.throwIt((short) CONSTANTS.SW2_AUTH_OTHER_ERROR);
@@ -359,7 +359,6 @@ public class Card extends Applet implements ISO7816 {
 			if (authState[AUTH_STEP] == CONSTANTS.P2_AUTHENTICATE_STEP2) {
 				crypto.enable();
 			}
-
 			return outLength;
 		}
 	}
@@ -401,11 +400,12 @@ public class Card extends Applet implements ISO7816 {
 		// if the length of the message is correct, assume it to be the name of the terminal
 		// terminal has to send its name as defined in the constants
 		try {
-			Util.arrayCopyNonAtomic(buffer, CONSTANTS.AUTH_MSG_1_OFFSET_NAME_TERM, partnerName, (short) 0, CONSTANTS.NAME_LENGTH);
+			Util.arrayCopyNonAtomic(buffer, CONSTANTS.AUTH_MSG_1_OFFSET_NAME_TERM, 
+					partnerName, (short) 0, CONSTANTS.NAME_LENGTH);
 		} catch (Exception e) {
 			throwException(CONSTANTS.SW1_WRONG_PARAMETERS);
 		}
-
+		
 		// flush the buffer to prepare for response
 		clear(buffer);
 
@@ -446,6 +446,7 @@ public class Card extends Applet implements ISO7816 {
 	 */
 	private short authStep4(byte to, short length, byte[] buffer) throws UserException {
 		short responseSize = 0;
+		
 		if (authState[AUTH_PARTNER] != to) {
 			reset();
 			UserException.throwIt((short) CONSTANTS.SW2_AUTH_WRONG_PARTNER);
