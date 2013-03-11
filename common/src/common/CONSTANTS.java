@@ -12,6 +12,7 @@ public class CONSTANTS {
 	// public static final int SEQNR_BYTESIZE = 4;
 	public static final byte STATE_INIT = 0;
 	public static final byte STATE_ISSUED = 1;
+	public static final byte STATE_REVOKED = 2;
 
 	public static final byte[] NAME_TERM = {(byte) 0x54, (byte) 0x45, (byte) 0x52, (byte) 0x4d}; // Hex for "TERM"
 	public static final byte[] NAME_CARD = {(byte) 0x43, (byte) 0x41, (byte) 0x52, (byte) 0x44}; // Hex for "CARD"
@@ -37,7 +38,7 @@ public class CONSTANTS {
 	public static final byte P2_AUTHENTICATE_STEP2 = (byte) 0x02;
 
 	/* Card issuance APDUs */
-	public static final byte INS_ISSUE = (byte) 0x0A;
+	public static final byte INS_REVOKE = (byte) 0x0A;
 	public static final byte INS_GET_PUBKEY = (byte) 0x0E;
 
 	/* Balance operations instructions */
@@ -128,6 +129,7 @@ public class CONSTANTS {
 
 	/* Personalization issues */
 	public static final byte SW2_ALREADY_ISSUED = (byte) 0xB0;
+	public static final byte SW2_CARD_REVOKED = (byte) 0xB1;
 	// public static final byte SW2_PERS_ALREADY_DONE = (byte) 0xB0;
 	// public static final byte SW2_PERS_INCORRECT_LEN = (byte) 0xB1;
 	// public static final byte SW2_PERS_INVALID_SIG = (byte) 0xB2;
