@@ -113,6 +113,7 @@ public class CONSTANTS {
 	public static final byte SW2_NO_AUTH_PERFORMED = (byte) 0xA7;
 	public static final byte SW2_AUTH_ALREADY_PERFORMED = (byte) 0xA8;
 	public static final byte SW2_AUTH_INCORRECT_MESSAGE_LENGTH = (byte) 0xA9;
+	public static final byte SW2_AUTH_CARD_KEY_NOT_INIT = (byte) 0xAA;
 
 	// public static final byte SW2_SESSION_BROKEN = (byte) 0xC0;
 	// public static final byte SW2_SESSION_WRONG_NONCE = (byte) 0xC1;
@@ -230,7 +231,9 @@ public class CONSTANTS {
 	public static final short AUTH_MSG_2_OFFSET_NAME_CARD = (short) 0;
 	public static final short AUTH_MSG_2_OFFSET_NAME_TERM = (short) (AUTH_MSG_2_OFFSET_NAME_CARD + NAME_LENGTH);
 	public static final short AUTH_MSG_2_OFFSET_NC = (short) (AUTH_MSG_2_OFFSET_NAME_TERM + NAME_LENGTH);
-	public static final short AUTH_MSG_2_TOTAL_LENGTH = (short) (AUTH_MSG_2_OFFSET_NC + NONCE_LENGTH);
+	public static final short AUTH_MSG_2_OFFSET_PUBKEYCARD_EXP = (short) (AUTH_MSG_2_OFFSET_NC + NONCE_LENGTH);
+	public static final short AUTH_MSG_2_OFFSET_PUBKEYCARD_MOD = (short) (AUTH_MSG_2_OFFSET_PUBKEYCARD_EXP + RSA_KEY_PUBEXP_LENGTH);
+	public static final short AUTH_MSG_2_TOTAL_LENGTH = (short) (AUTH_MSG_2_OFFSET_PUBKEYCARD_MOD + RSA_KEY_MOD_LENGTH);
 
 	/* Their third message of the handshake */
 	// public static final short AUTH_MSG_3_OFFSET_NB = (short) 0;

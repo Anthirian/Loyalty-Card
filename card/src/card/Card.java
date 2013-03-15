@@ -174,7 +174,7 @@ public class Card extends Applet implements ISO7816 {
 				responseSize = authenticate(p1, p2, length, buffer);
 				break;
 			case CONSTANTS.INS_GET_PUBKEY:
-				responseSize = crypto.getPubKeyCard(buffer);
+				responseSize = crypto.getPubKeyCard(buffer, (short) 0);
 				break;
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
@@ -196,7 +196,7 @@ public class Card extends Applet implements ISO7816 {
 				responseSize = checkCredits(buffer);
 				break;
 			case CONSTANTS.INS_GET_PUBKEY:
-				responseSize = crypto.getPubKeyCard(buffer);
+				responseSize = crypto.getPubKeyCard(buffer, (short) 0);
 				break;
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
@@ -259,8 +259,10 @@ public class Card extends Applet implements ISO7816 {
 		case CONSTANTS.INS_AUTHENTICATE:
 			sendRSAEncrypted(crypto.getPubKeySupermarket(), data, length, apdu);
 			break;
+		case CONSTANTS.INS_GET_PUBKEY:
+			sendRSAEncrypted(crypto.getPubKeySupermarket(), data, length, apdu);
+			break;
 		default:
-
 			sendAESEncrypted(data, length, apdu);
 			break;
 		}
@@ -380,12 +382,11 @@ public class Card extends Applet implements ISO7816 {
 	 */
 	private short authStep2(byte to, short length, byte[] buffer) throws UserException {
 		short responseSize = 0;
-
 		// "to" should be me (the card)
 		if (to != CONSTANTS.P1_AUTHENTICATE_CARD) {
 			reset();
 			UserException.throwIt(CONSTANTS.SW2_AUTH_WRONG_PARTNER);
-			return 0;
+			return 0; 
 		}
 
 		// When my partner != 0, something is wrong so return 0
@@ -412,11 +413,14 @@ public class Card extends Applet implements ISO7816 {
 			responseSize += crypto.getCardName(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NAME_CARD);
 
 			// Add the previously found partner name
-			responseSize += Util.arrayCopyNonAtomic(partnerName, (short) 0, buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NAME_TERM, CONSTANTS.NAME_LENGTH);
+			responseSize += Util.arrayCopyNonAtomic(partnerName, (short) 0, buffer,
+					CONSTANTS.AUTH_MSG_2_OFFSET_NAME_TERM, CONSTANTS.NAME_LENGTH);
 
 			// generate a nonce and store it in the buffer
 			crypto.generateCardNonce();
 			responseSize += crypto.getCardNonce(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NC);
+			
+			responseSize += crypto.getPubKeyCard(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_PUBKEYCARD_EXP);
 		} catch (Exception e) {
 			throwException(((CardRuntimeException) e).getReason());
 		}

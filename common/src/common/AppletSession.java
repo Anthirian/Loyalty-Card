@@ -1,7 +1,12 @@
 package common;
 
+import java.math.BigInteger;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPublicKeySpec;
 import java.util.Arrays;
 
 /**
@@ -71,8 +76,6 @@ public class AppletSession {
 			// initiate authentication
 			byte[] nonceCard = authStep1(from);
 			
-			System.out.println("Received nonce from card: " + nonceCard);
-			
 			// when there is no correct message sent, the nonce is null
 			if (nonceCard != null) {
 
@@ -106,7 +109,6 @@ public class AppletSession {
 		
 		Response response;
 		try {
-			System.out.println("Hoi ik ben Bob");
 			response = com.sendCommand(CONSTANTS.INS_AUTHENTICATE, 
 					CONSTANTS.P1_AUTHENTICATE_CARD, CONSTANTS.P2_AUTHENTICATE_STEP1, sendData);
 			//response = com.sendCommand(CONSTANTS.INS_GET_PUBKEY);
@@ -116,8 +118,7 @@ public class AppletSession {
 		}
 		
 		if (response == null) {
-			System.out.println("response leeg");
-			throw new SecurityException();
+			throw new SecurityException("Empty response");
 		}
 
 		if (!response.success()) {
@@ -128,7 +129,7 @@ public class AppletSession {
 		byte[] data = crypto.decryptRSA(response.getData(), this.privKey);
 		
 		if (data == null) {
-			throw new SecurityException();
+			throw new SecurityException("Empty data");
 		}
 
 		// extract the card name + nonce
@@ -136,12 +137,12 @@ public class AppletSession {
 				CONSTANTS.AUTH_MSG_2_OFFSET_NAME_TERM);
 		byte[] cardNonce = Arrays.copyOfRange(data, CONSTANTS.AUTH_MSG_2_OFFSET_NC, 
 				CONSTANTS.AUTH_MSG_2_OFFSET_NC + CONSTANTS.NONCE_LENGTH);
-		byte[] receivedTerminalName = Arrays.copyOfRange(data, 
-				CONSTANTS.AUTH_MSG_2_OFFSET_NAME_TERM, CONSTANTS.NAME_LENGTH);
+		byte[] receivedTerminalName = Arrays.copyOfRange(data, CONSTANTS.AUTH_MSG_2_OFFSET_NAME_TERM,
+				CONSTANTS.AUTH_MSG_2_OFFSET_NAME_TERM + CONSTANTS.NAME_LENGTH);
 		
 		// verify decrypted_challenge[1] equals terminal name
 		if (!(Arrays.equals(receivedTerminalName,CONSTANTS.NAME_TERM))) {
-			throw new SecurityException();
+			throw new SecurityException("Terminal name on card does not match registered terminal name");
 		}
 		
 		/*
@@ -149,11 +150,14 @@ public class AppletSession {
 		byte[] idCardBytes = Arrays.copyOfRange(data, CONSTANTS.RSA_SIGNED_PUBKEY_OFFSET_ID, CONSTANTS.RSA_SIGNED_PUBKEY_OFFSET_ID + CONSTANTS.ID_LENGTH);
 		ByteBuffer bb = ByteBuffer.wrap(idCardBytes);
 		this.cardId = bb.getInt();
-
+		
+		*/
 		// save the card public key
-		BigInteger exponent = new BigInteger(1, Arrays.copyOfRange(data, CONSTANTS.RSA_SIGNED_PUBKEY_OFFSET_EXP, CONSTANTS.RSA_SIGNED_PUBKEY_OFFSET_EXP
+		BigInteger exponent = new BigInteger(1, Arrays.copyOfRange(data,
+				CONSTANTS.AUTH_MSG_2_OFFSET_PUBKEYCARD_EXP, CONSTANTS.AUTH_MSG_2_OFFSET_PUBKEYCARD_EXP
 				+ CONSTANTS.RSA_KEY_PUBEXP_LENGTH));
-		BigInteger modulus = new BigInteger(1, Arrays.copyOfRange(data, CONSTANTS.RSA_SIGNED_PUBKEY_OFFSET_MOD, CONSTANTS.RSA_SIGNED_PUBKEY_OFFSET_MOD
+		BigInteger modulus = new BigInteger(1, Arrays.copyOfRange(data,
+				CONSTANTS.AUTH_MSG_2_OFFSET_PUBKEYCARD_MOD, CONSTANTS.AUTH_MSG_2_OFFSET_PUBKEYCARD_MOD
 				+ CONSTANTS.RSA_KEY_MOD_LENGTH));
 		RSAPublicKeySpec pubKeySpec = new RSAPublicKeySpec(modulus, exponent);
 
@@ -165,7 +169,7 @@ public class AppletSession {
 		} catch (InvalidKeySpecException e) {
 			throw new SecurityException();
 		}
-		*/
+		
 		return cardNonce;
 	}
 
@@ -181,6 +185,8 @@ public class AppletSession {
 				CONSTANTS.NONCE_LENGTH);
 		System.arraycopy(nonceTerminal, 0, data, CONSTANTS.AUTH_MSG_3_OFFSET_NT, 
 				CONSTANTS.NONCE_LENGTH);
+		
+		System.out.println("hoi");
 		
 		// encrypt the message with the card's public key
 		data = crypto.encrypt(data, this.pubKeyCard);

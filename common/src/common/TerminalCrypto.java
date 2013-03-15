@@ -2,10 +2,13 @@ package common;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.Signature;
@@ -15,6 +18,8 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
 
+//import javacard.security.KeyBuilder;
+
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
@@ -23,6 +28,8 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+
+//import card.SupermarketRSAKey;
 
 /**
  * The class handling all the crypto in the terminal
@@ -185,13 +192,13 @@ public class TerminalCrypto {
 			return RSACipher.doFinal(data);
 			// cipherData is 128 bytes long and is appended to the data array
 		} catch (IllegalArgumentException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
 		} catch (IllegalBlockSizeException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
 		} catch (BadPaddingException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
 		} catch (InvalidKeyException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
 		}
 		return null;
 	}
@@ -208,14 +215,15 @@ public class TerminalCrypto {
 			RSACipher.init(Cipher.DECRYPT_MODE, privKey);
 			return RSACipher.doFinal(data);
 		} catch (IllegalArgumentException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
 		} catch (IllegalBlockSizeException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
 		} catch (BadPaddingException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
 		} catch (InvalidKeyException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
 		}
+		
 		return null;
 	}
 	
@@ -309,12 +317,46 @@ public class TerminalCrypto {
 			generator.initialize(512);
 			KeyPair keypair;
 			try {
-				keypair = KeyManager.loadKeyPair("/home/javacard/workspace/Loyalty-Card/officeterminal/keys/","Supermarket");
+				keypair = KeyManager.loadKeyPair("/home/javacard/workspace/Loyalty-Card/officeterminal/keys/","supermarket");
 				RSAPublicKey pubKey = (RSAPublicKey) keypair.getPublic();
-				//RSAPrivateKey privKey = (RSAPrivateKey) keypair.getPrivate();
+				RSAPrivateKey privKey = (RSAPrivateKey) keypair.getPrivate();
 				
-				System.out.println("Exponent: " + pubKey.getPublicExponent());
-				System.out.println("Modulus: " + pubKey.getModulus());
+				BigInteger Exponent = pubKey.getPublicExponent();
+				BigInteger Modulus = pubKey.getModulus();
+				byte[] testExp = test.getExponent();
+				byte[] testMod = test.getModulus();
+				
+				System.out.println("Exponent: \n" + Exponent);
+				BigInteger testExpInt = new BigInteger(testExp);
+				System.out.println(testExpInt);
+				
+				System.out.println("Modulus: \n" + Modulus);			
+				BigInteger testModInt = new BigInteger(testMod);
+				System.out.println(testModInt);
+				
+				byte[] array = Modulus.toByteArray();
+				if (array[0] == 0) {
+				    byte[] tmp = new byte[array.length - 1];
+				    System.arraycopy(array, 1, tmp, 0, tmp.length);
+				    array = tmp;
+				}
+				
+				BigInteger testtest = new BigInteger (array);
+				System.out.println(testtest);
+				
+				/*
+				// perform encryption and decryption with test data
+				
+				TerminalCrypto pk = new TerminalCrypto();
+				byte[] data = new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+						12, 13, 14, 15, 16 };
+				printHex("Cleartext", data);
+				data = pk.encryptRSA(data, pubKey);
+				printHex("After encryption", data);
+				
+				data = pk.decryptRSA(data, privKey);
+				printHex("After decryption", data);
+				*/
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -327,14 +369,7 @@ public class TerminalCrypto {
 			}
 			
 			
-			// perform encryption and decryption with test data
-			/*
-			TerminalCrypto pk = new TerminalCrypto();
-			byte[] data = new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-					12, 13, 14, 15, 16 };
-			printHex("Cleartext", data);
-			data = pk.encrypt(data, pubKey);
-			printHex("After encryption", data);
+			
 			
 			/*
 			try {
@@ -345,8 +380,7 @@ public class TerminalCrypto {
 			*/
 			/*
 			//printHex("After verify", data);
-			data = pk.decrypt(data, privKey);
-			printHex("After decryption", data);
+			
 			*/
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();

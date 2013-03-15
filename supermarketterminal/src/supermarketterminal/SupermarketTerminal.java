@@ -34,11 +34,11 @@ public class SupermarketTerminal {
 	/** Cryptographic functions */
 	TerminalCrypto crypto;
 
-	/** Issuer public key */
+	/** Supermarket public key */
 	RSAPublicKey supermarketPublicKey;
 
-	/** Cash register's private key */
-	RSAPrivateKey privKey;
+	/** Supermarket private key */
+	RSAPrivateKey supermarketPrivKey;
 
 	/** keys directory */
 	String keyDir = "./keys/";
@@ -54,7 +54,7 @@ public class SupermarketTerminal {
 		System.out.println("Welcome to cash register " + cashRegisterId);
 		loadKeyFiles();
 		
-		session = new AppletSession(supermarketPublicKey, privKey, cashRegisterId);
+		session = new AppletSession(supermarketPublicKey, supermarketPrivKey, cashRegisterId);
 		com = new AppletCommunication(session);
 		crypto = new TerminalCrypto();
 		
@@ -68,8 +68,9 @@ public class SupermarketTerminal {
 	
 	private void loadKeyFiles() {
 		try {
-			String cashRegister = "CashRegister_" + this.cashRegisterId;
-			privKey = (RSAPrivateKey) KeyManager.loadKeyPair(cashRegister).getPrivate();
+			//String cashRegister = "CashRegister_" + this.cashRegisterId;
+			supermarketPrivKey = (RSAPrivateKey) KeyManager.loadKeyPair("supermarket")
+					.getPrivate();
 			supermarketPublicKey = (RSAPublicKey) KeyManager.loadKeyPair("supermarket")
 					.getPublic();
 		} catch (NoSuchAlgorithmException e) {

@@ -223,9 +223,8 @@ public final class Crypto {
 	short pubEncrypt(Key key, byte[] plaintext, short ptOff, short ptLen, byte[] ciphertext, short ctOff) {
 		verifyBufferLength(plaintext, ptOff, ptLen);
 		verifyBufferLength(ciphertext, ctOff);
-
+		
 		short numberOfBytes = 0;
-
 		try {
 			rsaCipher.init(key, Cipher.MODE_ENCRYPT);
 			numberOfBytes = rsaCipher.doFinal(plaintext, ptOff, ptLen, ciphertext, ctOff);
@@ -497,14 +496,14 @@ public final class Crypto {
 	}
 
 	/**
-	 * Gets the public key of <code>this</code> card. The key returned contains the ID of <code>this</code> card, the exponent of the public key and the modulus
+	 * Gets the public key of <code>this</code> card. The key returned contains the exponent of the public key and the modulus
 	 * of the keypair, respectively.
 	 * 
 	 * @param buf
 	 *            the buffer to hold the key.
 	 * @return the length of the data in the buffer.
 	 */
-	public short getPubKeyCard(byte[] buf) {
+	public short getPubKeyCard(byte[] buf, short offset) {
 		short totalLength = 0;
 		if (!pubKeyCard.isInitialized()) {
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_AUTH_PARTNER_KEY_NOT_INIT);
@@ -514,9 +513,8 @@ public final class Crypto {
 			return 0;
 		} else {
 			// everything is fine
-			totalLength += Util.arrayCopyNonAtomic(CONSTANTS.NAME_CARD, (short) 0, buf, CONSTANTS.RSA_PUBKEY_OFFSET_ID, CONSTANTS.NAME_LENGTH);
-			totalLength += pubKeyCard.getExponent(buf, CONSTANTS.RSA_PUBKEY_OFFSET_EXP);
-			totalLength += pubKeyCard.getModulus(buf, CONSTANTS.RSA_PUBKEY_OFFSET_MOD);
+			totalLength += pubKeyCard.getExponent(buf, (short) (0 + offset));
+			totalLength += pubKeyCard.getModulus(buf, (short) (CONSTANTS.RSA_KEY_PUBEXP_LENGTH + offset));			
 			return totalLength;
 		}
 		
