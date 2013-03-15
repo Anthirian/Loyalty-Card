@@ -50,7 +50,7 @@ public class Card extends Applet implements ISO7816 {
 	Crypto crypto;
 
 	public Card() {
-		crypto = new Crypto(this);
+		//crypto = new Crypto(this);
 		try {
 			tmp = JCSystem.makeTransientByteArray(CONSTANTS.APDU_DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT);
 			authBuf = JCSystem.makeTransientByteArray(CONSTANTS.DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT); // TODO Ensure correct buffer length
@@ -167,8 +167,8 @@ public class Card extends Applet implements ISO7816 {
 		case CONSTANTS.STATE_INIT:
 			// When initializing the only supported instruction is the issuance of the card
 			switch (ins) {
-			case CONSTANTS.INS_ISSUE:
-				responseSize = crypto.issueCard();
+			case CONSTANTS.INS_REVOKE:
+				responseSize = revoke();
 				break;
 			case CONSTANTS.INS_AUTHENTICATE:
 				responseSize = authenticate(p1, p2, length, buffer);
@@ -202,6 +202,8 @@ public class Card extends Applet implements ISO7816 {
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
 			}
 			break;
+		case CONSTANTS.STATE_REVOKED:
+			throwException(CONSTANTS.SW1_COMMAND_NOT_ALLOWED_00, CONSTANTS.SW2_CARD_REVOKED);
 		default:
 			ISOException.throwIt(SW_CONDITIONS_NOT_SATISFIED);
 		}
@@ -723,6 +725,18 @@ public class Card extends Applet implements ISO7816 {
 		clear(buf);
 	}
 
+	/**
+	 * Revokes <code>this</code> card. Once revoked, it can never be used for <i>anything</i> again.
+	 * @return 0
+	 */
+	private short revoke() {
+		JCSystem.beginTransaction();
+		reset();
+		state = CONSTANTS.STATE_REVOKED;
+		JCSystem.commitTransaction();
+		return (short) 1;
+	}
+	
 	/**
 	 * Resets all buffers and crypto-related objects
 	 */
