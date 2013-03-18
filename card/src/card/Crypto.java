@@ -227,13 +227,6 @@ public final class Crypto {
 		
 		short numberOfBytes = 0;
 		
-		//ensure the plaintext is a multiple of the block size (8)
-		if(plaintext.length % 8 != 0){ 
-	        byte[] padded = new byte[plaintext.length + 8 - (plaintext.length % 8)];
-	        Util.arrayCopyNonAtomic(plaintext,(short) 0, padded, (short) 0, (short) plaintext.length);
-	        plaintext = padded;
-	    }
-		
 		try {
 			rsaCipher.init(key, Cipher.MODE_ENCRYPT);
 			numberOfBytes = rsaCipher.doFinal(plaintext, ptOff, ptLen, ciphertext, ctOff);
