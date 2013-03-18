@@ -47,7 +47,7 @@ public class CONSTANTS {
 	public static final byte INS_BAL_DEC = (byte) 0x0D;
 
 	/* Couldn't get the ISO standard APDU to work, so put this in. */
-	public static final byte INS_GET_RESPONSE = (byte) 0x0F;
+	public static final byte INS_MORE_DATA = (byte) 0x0F;
 
 	// public static final byte INS_TEST_TEST_TEST = (byte) 0x04;
 

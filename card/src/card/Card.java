@@ -52,6 +52,7 @@ public class Card extends Applet implements ISO7816 {
 	public Card() {
 		crypto = new Crypto(this);
 		try {
+			// TODO: tmp groter maken? Dan past er meer data in dan slechts 1 APDU
 			tmp = JCSystem.makeTransientByteArray(CONSTANTS.APDU_DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT);
 			authBuf = JCSystem.makeTransientByteArray(CONSTANTS.DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT); // TODO Ensure correct buffer length
 			authState = JCSystem.makeTransientByteArray((short) 2, JCSystem.CLEAR_ON_DESELECT);
@@ -82,6 +83,7 @@ public class Card extends Applet implements ISO7816 {
 		byte p2 = buf[ISO7816.OFFSET_P2];
 		short lc = (short) (buf[ISO7816.OFFSET_LC] & 0x00FF);
 
+		// TODO: is deze check nog goed bij chaining?
 		if (lc > CONSTANTS.APDU_SIZE_MAX || lc == 0) {
 			reset();
 			throwException(CONSTANTS.SW1_WRONG_LE_FIELD_00, CONSTANTS.SW2_LC_INCORRECT);
@@ -94,6 +96,10 @@ public class Card extends Applet implements ISO7816 {
 		if (ins == CONSTANTS.INS_AUTHENTICATE) {
 			bytesRead = read(apdu, authBuf);
 			responseSize = processFurther(authBuf, bytesRead, cla, ins, p1, p2);
+		} else if (ins == CONSTANTS.INS_MORE_DATA) {
+			// If we need more data, just read the apdu buffer and request the next
+			readPart(apdu);
+			requestMoreData(apdu);
 		} else {
 			bytesRead = read(apdu, tmp);
 			responseSize = processFurther(tmp, bytesRead, cla, ins, p1, p2);
@@ -243,6 +249,47 @@ public class Card extends Applet implements ISO7816 {
 		}
 		return offset;
 	}
+	
+	/**
+	 * Wordt alleen gebruikt bij speciale INS. Stuurt een response APDU die aangeeft dat je wacht op meer data.
+	 * @param apdu
+	 */
+	void readPart(APDU apdu) {
+		short length = readChunk(apdu, tmp);
+		
+		// TODO: Controleer deze checks
+		if (length != 1) {
+			reset();
+			throwException(CONSTANTS.SW1_WRONG_LE_FIELD_00, CONSTANTS.SW2_RESP_CHAING_WRONG_LEN);
+			return;
+		}
+		if (tmp[0] != CONSTANTS.INS_MORE_DATA) {
+			reset();
+			throwException(CONSTANTS.SW1_SECURITY_RELATED_ISSUE_00, CONSTANTS.SW2_RESP_CHAING_WRONG_INS);
+			return;
+		}
+	}
+	
+	private short readChunk(APDU apdu, byte[] outputBuffer) {
+		// TODO: Verify the use of "tmp"
+		clear(tmp);
+
+		short responseSize = 0;
+		responseSize = read(apdu, tmp); // Leest de APDUs (soms meer dan 1) en stopt ze in outbuf
+		if (responseSize == 0) {
+			clear(tmp);
+			throwException(CONSTANTS.SW1_WRONG_LE_FIELD_00, CONSTANTS.SW2_READ_TOO_SHORT);
+		}
+		// Assume all APDUs have been received, and proceed with decryption using RSA
+		responseSize = crypto.pubDecrypt(tmp, (short) 0, (short) tmp.length, tmp, (short) 0);
+		if (responseSize == 0) {
+			clear(tmp);
+			throwException(CONSTANTS.SW1_WRONG_LE_FIELD_00, CONSTANTS.SW2_READ_TOO_SHORT);
+		}
+		// numRead = checkCounter(tmp, numRead);
+		return responseSize;
+	}
+	
 
 	/**
 	 * Send the data encrypted based on the instruction byte. If we are authenticating we only use RSA, otherwise we use AES.
@@ -268,6 +315,12 @@ public class Card extends Applet implements ISO7816 {
 			sendAESEncrypted(data, length, apdu);
 			break;
 		}
+	}
+	
+	private void requestMoreData(APDU apdu) {
+		// TODO: request more data
+		// TODO: check use of tmp
+		sendRSAEncrypted(crypto.getPubKeySupermarket(), tmp, (short) tmp.length, apdu);
 	}
 
 	/**
@@ -401,6 +454,7 @@ public class Card extends Applet implements ISO7816 {
 		// if the length of the message is correct, assume it to be the name of the terminal
 		// terminal has to send its name as defined in the constants
 		try {
+			// TODO: This should be decrypted now that the first step is sent encrypted
 			Util.arrayCopyNonAtomic(buffer, CONSTANTS.AUTH_MSG_1_OFFSET_NAME_TERM, 
 					partnerName, (short) 0, CONSTANTS.NAME_LENGTH);
 		} catch (Exception e) {
