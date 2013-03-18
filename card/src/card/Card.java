@@ -50,7 +50,7 @@ public class Card extends Applet implements ISO7816 {
 	Crypto crypto;
 
 	public Card() {
-		//crypto = new Crypto(this);
+		crypto = new Crypto(this);
 		try {
 			tmp = JCSystem.makeTransientByteArray(CONSTANTS.APDU_DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT);
 			authBuf = JCSystem.makeTransientByteArray(CONSTANTS.DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT); // TODO Ensure correct buffer length

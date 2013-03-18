@@ -56,6 +56,7 @@ public final class Crypto {
 	 *            The card to link the cryptographic functions to.
 	 */
 	public Crypto(Card card) {
+		
 		pubKeyCard = (RSAPublicKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_PUBLIC, 
 				KeyBuilder.LENGTH_RSA_512, false); 
         privKeyCard = (RSAPrivateCrtKey) KeyBuilder.buildKey(KeyBuilder.TYPE_RSA_CRT_PRIVATE, 
@@ -225,6 +226,14 @@ public final class Crypto {
 		verifyBufferLength(ciphertext, ctOff);
 		
 		short numberOfBytes = 0;
+		
+		//ensure the plaintext is a multiple of the block size (8)
+		if(plaintext.length % 8 != 0){ 
+	        byte[] padded = new byte[plaintext.length + 8 - (plaintext.length % 8)];
+	        Util.arrayCopyNonAtomic(plaintext,(short) 0, padded, (short) 0, (short) plaintext.length);
+	        plaintext = padded;
+	    }
+		
 		try {
 			rsaCipher.init(key, Cipher.MODE_ENCRYPT);
 			numberOfBytes = rsaCipher.doFinal(plaintext, ptOff, ptLen, ciphertext, ctOff);
@@ -514,12 +523,12 @@ public final class Crypto {
 		} else {
 			// everything is fine
 			totalLength += pubKeyCard.getExponent(buf, (short) (0 + offset));
-			totalLength += pubKeyCard.getModulus(buf, (short) (CONSTANTS.RSA_KEY_PUBEXP_LENGTH + offset));			
+			totalLength += pubKeyCard.getModulus(buf, (short) (totalLength + offset));
 			return totalLength;
 		}
 		
 	}
-
+	
 	/**
 	 * Retrieves the supermarket's public key to use for encryption.
 	 * 

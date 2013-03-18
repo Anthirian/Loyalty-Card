@@ -162,9 +162,9 @@ public class CONSTANTS {
 	// Only when using RSA 1024 bit and AES 128 bit, obviously.
 	public static final short AES_IV_LENGTH = (short) 16;
 	public static final short AES_KEY_LENGTH = (short) 16;
-	public static final short RSA_KEY_MOD_LENGTH = (short) 128;
-	public static final short RSA_KEY_PUBEXP_LENGTH = (short) 16;
-	public static final short RSA_KEY_PRIVEXP_LENGTH = (short) 128;
+	public static final short RSA_KEY_MOD_LENGTH = (short) 64;
+	public static final short RSA_KEY_PUBEXP_LENGTH = (short) 3;
+	public static final short RSA_KEY_PRIVEXP_LENGTH = (short) 64;
 	// public static final short RSA_KEY_CRT_COMP_LENGTH = (short) 64;
 	// public static final short RSA_SIGNATURE_LENGTH = (short) 128;
 
