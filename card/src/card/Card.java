@@ -283,6 +283,8 @@ public class Card extends Applet implements ISO7816 {
 	private void sendAESEncrypted(byte[] data, short length, APDU apdu) {
 		if (crypto.authenticated()) {
 			length = crypto.symEncrypt(data, (short) 0, length, data, (short) 0);
+		} else {
+			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_NO_AUTH_PERFORMED);
 		}
 		if (length > CONSTANTS.APDU_DATA_SIZE_MAX || length <= 0) {
 			throwException(ISO7816.SW_WRONG_LENGTH);
@@ -308,11 +310,8 @@ public class Card extends Applet implements ISO7816 {
 	 *            the APDU that invoked this response.
 	 */
 	private void sendRSAEncrypted(Key key, byte[] data, short length, APDU apdu) {
-		if (!crypto.authenticated()) {
-			length = crypto.pubEncrypt(key, data, (short) 0, length, data, (short) 0);
-		} else {
-			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_ALREADY_PERFORMED);
-		}
+		length = crypto.pubEncrypt(key, data, (short) 0, length, data, (short) 0);
+		 
 		if (length > CONSTANTS.APDU_DATA_SIZE_MAX || length <= 0) {
 			throwException(ISO7816.SW_WRONG_LENGTH);
 			return;
@@ -503,13 +502,9 @@ public class Card extends Applet implements ISO7816 {
 		// the data contains my name
 
 		// store the name of the terminal locally to ensure sending to the same partner
-		if (Util.arrayCopyNonAtomic(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NAME_TERM, partnerName, (short) 0, CONSTANTS.NAME_LENGTH) == CONSTANTS.NAME_LENGTH) {
-			reset();
-			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_INCORRECT_MESSAGE_LENGTH);
-			return 0;
-		}
+		Util.arrayCopyNonAtomic(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NAME_TERM, partnerName, (short) 0, CONSTANTS.NAME_LENGTH);
 
-		// proceed to check the name of the terminal matches the one we found in step 1
+		//TODO: check whether the terminalname matches the one we found in step 1
 
 		// This check currently fails, because authState[AUTH_PARTNER] was not initialized in step 1
 		// Instead we initialized authPartner[0] with one byte representing the partner

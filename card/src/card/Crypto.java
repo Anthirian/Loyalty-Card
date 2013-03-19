@@ -287,7 +287,7 @@ public final class Crypto {
 	 *         <code>false</code> if the nonces do not match.
 	 */
 	boolean checkCardNonce(byte[] buffer, short offset) {
-		return Util.arrayCompare(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NC, cardNonce, (short) 0, CONSTANTS.NONCE_LENGTH) != 0;
+		return Util.arrayCompare(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NC, cardNonce, (short) 0, CONSTANTS.NONCE_LENGTH) == 0;
 	}
 
 	/**

@@ -212,11 +212,9 @@ public class AppletSession {
 				CONSTANTS.NONCE_LENGTH);
 		System.arraycopy(nonceTerminal, 0, data, CONSTANTS.AUTH_MSG_3_OFFSET_NT, 
 				CONSTANTS.NONCE_LENGTH);
-		
-		System.out.println("hoi");
-		
+				
 		// encrypt the message with the card's public key
-		data = crypto.encrypt(data, this.pubKeyCard);
+		data = crypto.encryptRSA(data, this.pubKeyCard);
 
 		// send the command
 		Response response;
@@ -232,7 +230,7 @@ public class AppletSession {
 		}
 		
 		// decrypt the response with the terminal private key
-		data = crypto.decrypt(response.getData(), this.privKey);
+		data = crypto.decryptRSA(response.getData(), this.privKey);
 
 		if (data == null) {
 			throw new SecurityException();

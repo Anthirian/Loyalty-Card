@@ -114,7 +114,7 @@ public class AppletCommunication {
 	}
 
 	public ResponseAPDU sendCommandAPDU(CommandAPDU capdu) {
-		ResponseAPDU rapdu;
+		ResponseAPDU rapdu;	
 		log(capdu);
 		try {
 			if (requireCard()) {
@@ -161,7 +161,8 @@ public class AppletCommunication {
 	}
 
 	public Response sendCommand(byte instruction, byte p1, byte p2) {
-		byte[] data = new byte[0];
+		byte[] data = new byte[1];
+		data[0] = instruction;
 		return sendCommand(instruction, p1, p2, data);
 	}
 
