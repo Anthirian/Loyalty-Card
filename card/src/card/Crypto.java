@@ -26,8 +26,6 @@ public final class Crypto {
 	private Cipher rsaCipher;
 	private Cipher aesCipher;
 
-	// private Signature rsaSignature;
-
 	private RandomData random;
 	private byte[] cardNonce;
 	private byte[] tmpKey;
@@ -79,7 +77,6 @@ public final class Crypto {
 
 		rsaCipher = Cipher.getInstance(Cipher.ALG_RSA_PKCS1, false);
 		aesCipher = Cipher.getInstance(Cipher.ALG_AES_BLOCK_128_CBC_NOPAD, false);
-		// rsaSignature = Signature.getInstance(Signature.ALG_RSA_SHA_PKCS1, false);
 
 		cardNonce = JCSystem.makeTransientByteArray(CONSTANTS.NONCE_LENGTH, JCSystem.CLEAR_ON_DESELECT);
 		tmpKey = JCSystem.makeTransientByteArray(CONSTANTS.AES_KEY_LENGTH, JCSystem.CLEAR_ON_DESELECT);
@@ -358,13 +355,13 @@ public final class Crypto {
 	 *             when the current balance is less than the amount that is being spent.
 	 */
 	short spend(short amount) {
-		if (amount >= 0 && balance >= amount) {
-			balance -= amount;
-		} else {
+		if (amount < 0 || balance < amount) {
 			Card.throwException(CONSTANTS.SW1_WRONG_PARAMETERS, CONSTANTS.SW2_CREDITS_INSUFFICIENT);
 			return balance;
+		} else {
+			balance -= amount;
+			return balance;
 		}
-		return balance;
 	}
 
 	/**
@@ -377,12 +374,13 @@ public final class Crypto {
 	 *             when <code>amount</code> is negative.
 	 */
 	short gain(short amount) {
-		if (amount >= 0) {
-			balance += amount;
-		} else {
+		if (amount < 0) {
 			Card.throwException(CONSTANTS.SW1_WRONG_PARAMETERS, CONSTANTS.SW2_CREDITS_NEGATIVE);
+			return balance;
+		} else {
+			balance += amount;
+			return balance;
 		}
-		return balance;
 	}
 
 	/**
@@ -418,12 +416,12 @@ public final class Crypto {
 	 *             if the card has already been issued.
 	 */
 	short issueCard() {
-		if (c.state != CONSTANTS.STATE_ISSUED) {
-			c.state = CONSTANTS.STATE_ISSUED;
-			return 1;
-		} else {
+		if (c.state == CONSTANTS.STATE_ISSUED) {
 			Card.throwException(CONSTANTS.SW1_COMMAND_NOT_ALLOWED_00, CONSTANTS.SW2_ALREADY_ISSUED);
 			return 0;
+		} else {
+			c.state = CONSTANTS.STATE_ISSUED;
+			return 1;      
 		}
 	}
 
@@ -435,11 +433,11 @@ public final class Crypto {
 	 *             if the user is not authenticated yet.
 	 */
 	short getBalance() {
-		if (authenticated()) {
-			return balance;
-		} else {
+		if (!authenticated()) {
 			Card.throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_NO_AUTH_PERFORMED);
 			return 0;
+		} else {
+			return balance;
 		}
 	}
 
@@ -530,11 +528,11 @@ public final class Crypto {
 	 *             if the supermarket's public key is not initialized yet.
 	 */
 	RSAPublicKey getPubKeySupermarket() {
-		if (pubKeySupermarket.isInitialized()) {
-			return pubKeySupermarket;
-		} else {
+		if (!pubKeySupermarket.isInitialized()) {
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_AUTH_PARTNER_KEY_NOT_INIT);
 			return null;
+		} else {
+			return pubKeySupermarket;
 		}
 	}
 }
