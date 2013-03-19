@@ -46,7 +46,6 @@ public class CONSTANTS {
 	public static final byte INS_BAL_CHECK = (byte) 0x0C;
 	public static final byte INS_BAL_DEC = (byte) 0x0D;
 
-	/* Couldn't get the ISO standard APDU to work, so put this in. */
 	public static final byte INS_MORE_DATA = (byte) 0x0F;
 
 	// public static final byte INS_TEST_TEST_TEST = (byte) 0x04;
@@ -228,14 +227,12 @@ public class CONSTANTS {
 	// public static final short AUTH_MSG_2_LENGTH = (short) (AUTH_MSG_2_OFFSET_ID + ID_LENGTH);
 
 	// Our second message of the handshake
-	// Builds the following buffer: [ C | T | NC | pKC ]
+	// Builds the following buffer: [ C | T | NC ]
 	// Sent from the Card to the Terminal
 	public static final short AUTH_MSG_2_OFFSET_NAME_CARD = (short) 0;
 	public static final short AUTH_MSG_2_OFFSET_NAME_TERM = (short) (AUTH_MSG_2_OFFSET_NAME_CARD + NAME_LENGTH);
 	public static final short AUTH_MSG_2_OFFSET_NC = (short) (AUTH_MSG_2_OFFSET_NAME_TERM + NAME_LENGTH);
-	public static final short AUTH_MSG_2_OFFSET_PUBKEYCARD_EXP = (short) (AUTH_MSG_2_OFFSET_NC + NONCE_LENGTH);
-	public static final short AUTH_MSG_2_OFFSET_PUBKEYCARD_MOD = (short) (AUTH_MSG_2_OFFSET_PUBKEYCARD_EXP + RSA_KEY_PUBEXP_LENGTH);
-	public static final short AUTH_MSG_2_TOTAL_LENGTH = (short) (AUTH_MSG_2_OFFSET_PUBKEYCARD_MOD + RSA_KEY_MOD_LENGTH);
+	public static final short AUTH_MSG_2_TOTAL_LENGTH = (short) (AUTH_MSG_2_OFFSET_NC + NONCE_LENGTH);
 
 	/* Their third message of the handshake */
 	// public static final short AUTH_MSG_3_OFFSET_NB = (short) 0;
@@ -260,6 +257,10 @@ public class CONSTANTS {
 	public static final short AUTH_MSG_4_OFFSET_SESSION_KEY = (short) (AUTH_MSG_4_OFFSET_NT + NONCE_LENGTH);
 	public static final short AUTH_MSG_4_TOTAL_LENGTH = (short) (AUTH_MSG_4_OFFSET_SESSION_KEY + AES_KEY_LENGTH);
 
+	public static final short PUB_KEY_CARD_EXP_OFF = (short) 0;
+	public static final short PUB_KEY_CARD_MOD_OFF = (short) (PUB_KEY_CARD_EXP_OFF + RSA_KEY_PUBEXP_LENGTH);
+
+	
 	// public static final short CREDITS_MSG_OFFSET_VAL = (short) 0;
 	// public static final short CREDITS_MSG_OFFSET_SIG = (short) (CREDITS_MSG_OFFSET_VAL + CREDITS_LENGTH);
 	// public static final short CREDITS_MSG_LENGTH = (short) (CREDITS_MSG_OFFSET_SIG + RSA_SIGNATURE_LENGTH);

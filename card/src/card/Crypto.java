@@ -515,8 +515,8 @@ public final class Crypto {
 			return 0;
 		} else {
 			// everything is fine
-			totalLength += pubKeyCard.getExponent(buf, (short) (0 + offset));
-			totalLength += pubKeyCard.getModulus(buf, (short) (totalLength + offset));
+			totalLength += pubKeyCard.getExponent(buf, (short) (CONSTANTS.PUB_KEY_CARD_EXP_OFF + offset));
+			totalLength += pubKeyCard.getModulus(buf, (short) (CONSTANTS.PUB_KEY_CARD_MOD_OFF + offset));
 			return totalLength;
 		}
 		

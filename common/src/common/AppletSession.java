@@ -73,6 +73,8 @@ public class AppletSession {
 	// handshake protocol
 	public boolean authenticate(byte[] from) {
 		try {
+			setPubKeyCard();
+			
 			// initiate authentication
 			byte[] nonceCard = authStep1(from);
 			
@@ -101,6 +103,49 @@ public class AppletSession {
 		return false;
 	}
 	
+	private byte[] setPubKeyCard() {
+		Response response;
+		try {
+			response = com.sendCommand(CONSTANTS.INS_GET_PUBKEY);
+		} catch (Exception e) {
+			throw new SecurityException(e.getMessage());
+		}
+		
+		if (response == null) {
+			throw new SecurityException("Empty response");
+		}
+		
+		if (!response.success()) {
+			throw new SecurityException("Response failed");
+		}
+		
+		byte[] data = response.getData();
+		
+		if (data == null) {
+			throw new SecurityException("Empty data");
+		}
+
+		// save the card's public key
+		BigInteger exponent = new BigInteger(1, Arrays.copyOfRange(data,
+				CONSTANTS.PUB_KEY_CARD_EXP_OFF, CONSTANTS.PUB_KEY_CARD_EXP_OFF
+				+ CONSTANTS.RSA_KEY_PUBEXP_LENGTH));
+		BigInteger modulus = new BigInteger(1, Arrays.copyOfRange(data,
+				CONSTANTS.PUB_KEY_CARD_MOD_OFF, CONSTANTS.PUB_KEY_CARD_MOD_OFF
+				+ CONSTANTS.RSA_KEY_MOD_LENGTH));
+		RSAPublicKeySpec pubKeySpec = new RSAPublicKeySpec(modulus, exponent);
+		
+		try {
+			KeyFactory factory = KeyFactory.getInstance("RSA");
+			this.pubKeyCard = (RSAPublicKey) factory.generatePublic(pubKeySpec);
+		} catch (NoSuchAlgorithmException e) {
+			throw new SecurityException(e.getMessage());
+		} catch (InvalidKeySpecException e) {
+			throw new SecurityException();
+		}
+		
+		return data;
+	}
+
 	private byte[] authStep1 (byte[] from) {
 		// send authentication apdu		
 		byte[] sendData = new byte[CONSTANTS.AUTH_MSG_1_TOTAL_LENGTH];
@@ -150,25 +195,7 @@ public class AppletSession {
 		byte[] idCardBytes = Arrays.copyOfRange(data, CONSTANTS.RSA_SIGNED_PUBKEY_OFFSET_ID, CONSTANTS.RSA_SIGNED_PUBKEY_OFFSET_ID + CONSTANTS.ID_LENGTH);
 		ByteBuffer bb = ByteBuffer.wrap(idCardBytes);
 		this.cardId = bb.getInt();
-		
 		*/
-		// save the card public key
-		BigInteger exponent = new BigInteger(1, Arrays.copyOfRange(data,
-				CONSTANTS.AUTH_MSG_2_OFFSET_PUBKEYCARD_EXP, CONSTANTS.AUTH_MSG_2_OFFSET_PUBKEYCARD_EXP
-				+ CONSTANTS.RSA_KEY_PUBEXP_LENGTH));
-		BigInteger modulus = new BigInteger(1, Arrays.copyOfRange(data,
-				CONSTANTS.AUTH_MSG_2_OFFSET_PUBKEYCARD_MOD, CONSTANTS.AUTH_MSG_2_OFFSET_PUBKEYCARD_MOD
-				+ CONSTANTS.RSA_KEY_MOD_LENGTH));
-		RSAPublicKeySpec pubKeySpec = new RSAPublicKeySpec(modulus, exponent);
-
-		try {
-			KeyFactory factory = KeyFactory.getInstance("RSA");
-			this.pubKeyCard = (RSAPublicKey) factory.generatePublic(pubKeySpec);
-		} catch (NoSuchAlgorithmException e) {
-			throw new SecurityException(e.getMessage());
-		} catch (InvalidKeySpecException e) {
-			throw new SecurityException();
-		}
 		
 		return cardNonce;
 	}

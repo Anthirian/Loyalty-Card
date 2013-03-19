@@ -124,6 +124,7 @@ public class AppletCommunication {
 			}
 			log(rapdu);
 		} catch (CardException e) {
+			System.err.println("Communication error: " + e.getMessage());
 			throw new SecurityException("Communication error: " + e.getMessage());
 		}
 		return rapdu;
@@ -180,16 +181,18 @@ public class AppletCommunication {
 		if (bytesToSend > CONSTANTS.APDU_DATA_SIZE_MAX) {
 			throw new SecurityException();
 		}
-		
 		rapdu = sendSessionCommand(CONSTANTS.CLA_DEF, instruction, p1, p2, data);
 		System.out.println("Terminal received: " + rapdu);
 		return processResponse(rapdu);
 	}
 
 	private ResponseAPDU sendSessionCommand(int cla, int ins, int p1, int p2, byte[] data) {
+		
+		/*//TODO: vreemd stukje code, sommige instructies vereisen helemaal geen data namelijk.
 		if (data == null || data.length == 0) {
 			throw new SecurityException();
 		}
+		*/
 		
 		/*
 		// prepend counter byte
@@ -208,13 +211,11 @@ public class AppletCommunication {
 		CommandAPDU apdu = new CommandAPDU(cla, ins, p1, p2, msg);
 		*/
 		
-		
 		if (session.isAuthenticated()) {
 			data = crypto.encryptAES(data, session.getSessionKey());
 		}
 		
 		CommandAPDU apdu = new CommandAPDU(cla, ins, p1, p2, data);
-		
 		return sendCommandAPDU(apdu);
 	}
 

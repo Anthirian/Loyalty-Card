@@ -27,13 +27,13 @@ public class Card extends Applet implements ISO7816 {
 	private static final short AUTH_PARTNER = 1;
 
 	/* Buffers in RAM */
-	
+
 	/** Holds at most one APDU worth of data */
 	byte[] tmp;
-	
+
 	/** Holds the messages exchanged during the authentication process */
 	byte[] authBuf;
-	
+
 	/** Holds the current authentication status */
 	byte[] authState;
 
@@ -52,7 +52,6 @@ public class Card extends Applet implements ISO7816 {
 	public Card() {
 		crypto = new Crypto(this);
 		try {
-			// TODO: tmp groter maken? Dan past er meer data in dan slechts 1 APDU
 			tmp = JCSystem.makeTransientByteArray(CONSTANTS.APDU_DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT);
 			authBuf = JCSystem.makeTransientByteArray(CONSTANTS.DATA_SIZE_MAX, JCSystem.CLEAR_ON_DESELECT); // TODO Ensure correct buffer length
 			authState = JCSystem.makeTransientByteArray((short) 2, JCSystem.CLEAR_ON_DESELECT);
@@ -83,7 +82,6 @@ public class Card extends Applet implements ISO7816 {
 		byte p2 = buf[ISO7816.OFFSET_P2];
 		short lc = (short) (buf[ISO7816.OFFSET_LC] & 0x00FF);
 
-		// TODO: is deze check nog goed bij chaining?
 		if (lc > CONSTANTS.APDU_SIZE_MAX || lc == 0) {
 			reset();
 			throwException(CONSTANTS.SW1_WRONG_LE_FIELD_00, CONSTANTS.SW2_LC_INCORRECT);
@@ -96,10 +94,6 @@ public class Card extends Applet implements ISO7816 {
 		if (ins == CONSTANTS.INS_AUTHENTICATE) {
 			bytesRead = read(apdu, authBuf);
 			responseSize = processFurther(authBuf, bytesRead, cla, ins, p1, p2);
-		} else if (ins == CONSTANTS.INS_MORE_DATA) {
-			// If we need more data, just read the apdu buffer and request the next
-			readPart(apdu);
-			requestMoreData(apdu);
 		} else {
 			bytesRead = read(apdu, tmp);
 			responseSize = processFurther(tmp, bytesRead, cla, ins, p1, p2);
@@ -145,7 +139,7 @@ public class Card extends Applet implements ISO7816 {
 			throwException(ISO7816.SW_FILE_FULL);
 			return 0;
 		}
-		
+
 		return responseSize;
 	}
 
@@ -176,11 +170,11 @@ public class Card extends Applet implements ISO7816 {
 			case CONSTANTS.INS_REVOKE:
 				responseSize = revoke();
 				break;
-			case CONSTANTS.INS_AUTHENTICATE:
-				responseSize = authenticate(p1, p2, length, buffer);
-				break;
 			case CONSTANTS.INS_GET_PUBKEY:
 				responseSize = crypto.getPubKeyCard(buffer, (short) 0);
+				break;
+			case CONSTANTS.INS_AUTHENTICATE:
+				responseSize = authenticate(p1, p2, length, buffer);
 				break;
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
@@ -189,6 +183,9 @@ public class Card extends Applet implements ISO7816 {
 		case CONSTANTS.STATE_ISSUED:
 			// If the card has been finalized it is ready for regular use
 			switch (ins) {
+			case CONSTANTS.INS_GET_PUBKEY:
+				responseSize = crypto.getPubKeyCard(buffer, (short) 0);
+				break;
 			case CONSTANTS.INS_AUTHENTICATE:
 				responseSize = authenticate(p1, p2, length, buffer);
 				break;
@@ -201,9 +198,6 @@ public class Card extends Applet implements ISO7816 {
 			case CONSTANTS.INS_BAL_CHECK:
 				responseSize = checkCredits(buffer);
 				break;
-			case CONSTANTS.INS_GET_PUBKEY:
-				responseSize = crypto.getPubKeyCard(buffer, (short) 0);
-				break;
 			default:
 				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
 			}
@@ -213,7 +207,7 @@ public class Card extends Applet implements ISO7816 {
 		default:
 			ISOException.throwIt(SW_CONDITIONS_NOT_SATISFIED);
 		}
-		
+
 		return responseSize;
 	}
 
@@ -237,7 +231,7 @@ public class Card extends Applet implements ISO7816 {
 		}
 		Util.arrayCopyNonAtomic(buffer, ISO7816.OFFSET_CDATA, data, offset, readCount);
 		offset += readCount;
-			
+
 		while (apdu.getCurrentState() == APDU.STATE_PARTIAL_INCOMING) {
 			readCount = apdu.receiveBytes(ISO7816.OFFSET_CDATA);
 			if (offset + readCount > data.length) {
@@ -249,47 +243,6 @@ public class Card extends Applet implements ISO7816 {
 		}
 		return offset;
 	}
-	
-	/**
-	 * Wordt alleen gebruikt bij speciale INS. Stuurt een response APDU die aangeeft dat je wacht op meer data.
-	 * @param apdu
-	 */
-	void readPart(APDU apdu) {
-		short length = readChunk(apdu, tmp);
-		
-		// TODO: Controleer deze checks
-		if (length != 1) {
-			reset();
-			throwException(CONSTANTS.SW1_WRONG_LE_FIELD_00, CONSTANTS.SW2_RESP_CHAING_WRONG_LEN);
-			return;
-		}
-		if (tmp[0] != CONSTANTS.INS_MORE_DATA) {
-			reset();
-			throwException(CONSTANTS.SW1_SECURITY_RELATED_ISSUE_00, CONSTANTS.SW2_RESP_CHAING_WRONG_INS);
-			return;
-		}
-	}
-	
-	private short readChunk(APDU apdu, byte[] outputBuffer) {
-		// TODO: Verify the use of "tmp"
-		clear(tmp);
-
-		short responseSize = 0;
-		responseSize = read(apdu, tmp); // Leest de APDUs (soms meer dan 1) en stopt ze in outbuf
-		if (responseSize == 0) {
-			clear(tmp);
-			throwException(CONSTANTS.SW1_WRONG_LE_FIELD_00, CONSTANTS.SW2_READ_TOO_SHORT);
-		}
-		// Assume all APDUs have been received, and proceed with decryption using RSA
-		responseSize = crypto.pubDecrypt(tmp, (short) 0, (short) tmp.length, tmp, (short) 0);
-		if (responseSize == 0) {
-			clear(tmp);
-			throwException(CONSTANTS.SW1_WRONG_LE_FIELD_00, CONSTANTS.SW2_READ_TOO_SHORT);
-		}
-		// numRead = checkCounter(tmp, numRead);
-		return responseSize;
-	}
-	
 
 	/**
 	 * Send the data encrypted based on the instruction byte. If we are authenticating we only use RSA, otherwise we use AES.
@@ -309,18 +262,12 @@ public class Card extends Applet implements ISO7816 {
 			sendRSAEncrypted(crypto.getPubKeySupermarket(), data, length, apdu);
 			break;
 		case CONSTANTS.INS_GET_PUBKEY:
-			sendRSAEncrypted(crypto.getPubKeySupermarket(), data, length, apdu);
+			sendClear(data, length, apdu);
 			break;
 		default:
 			sendAESEncrypted(data, length, apdu);
 			break;
 		}
-	}
-	
-	private void requestMoreData(APDU apdu) {
-		// TODO: request more data
-		// TODO: check use of tmp
-		sendRSAEncrypted(crypto.getPubKeySupermarket(), tmp, (short) tmp.length, apdu);
 	}
 
 	/**
@@ -374,6 +321,27 @@ public class Card extends Applet implements ISO7816 {
 		apdu.setOutgoingLength(length);
 		apdu.sendBytesLong(data, (short) 0, length);
 	}
+	
+	/**
+	 * Sends a message in plain text.
+	 * 
+	 * @param data
+	 *            the buffer that holds the message to be sent.
+	 * @param length
+	 *            the length of the message in the buffer.
+	 * @param apdu
+	 *            the APDU that invoked this response.
+	 */
+	private void sendClear(byte[] data, short length, APDU apdu) {
+		if (length > CONSTANTS.APDU_DATA_SIZE_MAX || length <= 0) {
+			throwException(ISO7816.SW_WRONG_LENGTH);
+			return;
+		}
+		
+		apdu.setOutgoing();
+		apdu.setOutgoingLength(length);
+		apdu.sendBytesLong(data, (short) 0, length);
+	}
 
 	short authenticate(byte to, byte step, short length, byte[] buffer) throws UserException {
 		short outLength = 0;
@@ -400,7 +368,7 @@ public class Card extends Applet implements ISO7816 {
 			UserException.throwIt(e.getReason());
 			return 0;
 		}
-		
+
 		if (outLength == 0) {
 			reset();
 			UserException.throwIt((short) CONSTANTS.SW2_AUTH_OTHER_ERROR);
@@ -454,13 +422,12 @@ public class Card extends Applet implements ISO7816 {
 		// if the length of the message is correct, assume it to be the name of the terminal
 		// terminal has to send its name as defined in the constants
 		try {
-			// TODO: This should be decrypted now that the first step is sent encrypted
 			Util.arrayCopyNonAtomic(buffer, CONSTANTS.AUTH_MSG_1_OFFSET_NAME_TERM, 
 					partnerName, (short) 0, CONSTANTS.NAME_LENGTH);
 		} catch (Exception e) {
 			throwException(CONSTANTS.SW1_WRONG_PARAMETERS);
 		}
-		
+
 		// flush the buffer to prepare for response
 		clear(buffer);
 
@@ -475,8 +442,6 @@ public class Card extends Applet implements ISO7816 {
 			// generate a nonce and store it in the buffer
 			crypto.generateCardNonce();
 			responseSize += crypto.getCardNonce(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NC);
-			
-			responseSize += crypto.getPubKeyCard(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_PUBKEYCARD_EXP);
 		} catch (Exception e) {
 			throwException(((CardRuntimeException) e).getReason());
 		}
@@ -504,7 +469,7 @@ public class Card extends Applet implements ISO7816 {
 	 */
 	private short authStep4(byte to, short length, byte[] buffer) throws UserException {
 		short responseSize = 0;
-		
+
 		if (authState[AUTH_PARTNER] != to) {
 			reset();
 			UserException.throwIt((short) CONSTANTS.SW2_AUTH_WRONG_PARTNER);
@@ -790,7 +755,7 @@ public class Card extends Applet implements ISO7816 {
 		JCSystem.commitTransaction();
 		return (short) 1;
 	}
-	
+
 	/**
 	 * Resets all buffers and crypto-related objects
 	 */
