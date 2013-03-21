@@ -241,17 +241,21 @@ public class TerminalCrypto {
 			data = AESCipher.doFinal(data);
 			return stripPaddingAES(data);
 		} catch (IllegalArgumentException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
+			return null;
 		} catch (InvalidKeyException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
+			return null;
 		} catch (IllegalBlockSizeException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
+			return null;
 		} catch (BadPaddingException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
+			return null;
 		} catch (InvalidAlgorithmParameterException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
+			return null;
 		}
-		return null;
 	}
 	
 	/**
@@ -269,17 +273,21 @@ public class TerminalCrypto {
 			AESCipher.init(Cipher.ENCRYPT_MODE, AESKeySpec, AESIvSpec);
 			return AESCipher.doFinal(data);
 		} catch (IllegalArgumentException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
+			return null;
 		} catch (InvalidKeyException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
+			return null;
 		} catch (IllegalBlockSizeException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
+			return null;
 		} catch (BadPaddingException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
+			return null;
 		} catch (InvalidAlgorithmParameterException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
+			return null;
 		}
-		return null;
 	}
 
 	private byte[] padAES(byte[] data) {

@@ -43,8 +43,8 @@ public class Card extends Applet implements ISO7816 {
 	/** Holds the terminal's name received in authentication step four */
 	byte[] partnerName;
 
-	/** The applet state (<code>INIT</code> or <code>ISSUED</code>). */
-	byte state = CONSTANTS.STATE_INIT;
+	/** The applet state (<code>REVOKED</code> or <code>ISSUED</code>). */
+	byte state = CONSTANTS.STATE_ISSUED;
 
 	/** The cryptograhy object. Handles all encryption and decryption and also stores the current balance of the card */
 	Crypto crypto;
@@ -164,25 +164,12 @@ public class Card extends Applet implements ISO7816 {
 		short responseSize = 0;
 
 		switch (state) {
-		case CONSTANTS.STATE_INIT:
-			// When initializing the only supported instruction is the issuance of the card
+		case CONSTANTS.STATE_ISSUED:
+			// If the card has been finalized it is ready for regular use
 			switch (ins) {
 			case CONSTANTS.INS_REVOKE:
 				responseSize = revoke();
 				break;
-			case CONSTANTS.INS_GET_PUBKEY:
-				responseSize = crypto.getPubKeyCard(buffer, (short) 0);
-				break;
-			case CONSTANTS.INS_AUTHENTICATE:
-				responseSize = authenticate(p1, p2, length, buffer);
-				break;
-			default:
-				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
-			}
-			break;
-		case CONSTANTS.STATE_ISSUED:
-			// If the card has been finalized it is ready for regular use
-			switch (ins) {
 			case CONSTANTS.INS_GET_PUBKEY:
 				responseSize = crypto.getPubKeyCard(buffer, (short) 0);
 				break;
@@ -199,7 +186,7 @@ public class Card extends Applet implements ISO7816 {
 				responseSize = checkCredits(buffer);
 				break;
 			default:
-				throwException(ISO7816.SW_INS_NOT_SUPPORTED);
+				throwException(CONSTANTS.SW1_INS_NOT_SUPPORTED, ins);
 			}
 			break;
 		case CONSTANTS.STATE_REVOKED:
@@ -623,42 +610,41 @@ public class Card extends Applet implements ISO7816 {
 	 * @param buffer
 	 *            the buffer holding the amount of (non-zero and non-negative) credits to add. Should <u>only</u> contain the amount. Is overwritten with the
 	 *            new balance.
-	 * @param length
-	 *            the length of the amount in the buffer (must be 2 or an exception will be thrown).
 	 * @return length of the new balance in the buffer (2 if successful, 0 otherwise).
 	 * @throws UserException
 	 *             <ul>
-	 *             <li>if the length of the amount in <code>buffer</code> is not 2.</li>
 	 *             <li>if the amount of credits to add is <= 0.</li>
 	 *             <li>if a balance change operation is already in progress.</li>
 	 *             </ul>
 	 */
 	private short add(byte[] buffer, short length) throws UserException {
 		short responseSize = 0;
+		byte[] data = new byte[length];
+		length = crypto.symDecrypt(buffer, (short) 0, length, data, (short) 0);
 
-		// Verify buffer length
+		
+		// Verify (decrypted) buffer length: credits.length should be 2
 		if (length != CONSTANTS.CREDITS_LENGTH) {
-			UserException.throwIt((short) CONSTANTS.SW2_CREDITS_WRONG_LENGTH);
-			return 0;
+			throwException(CONSTANTS.SW2_CREDITS_WRONG_LENGTH);
 		}
-
+		
 		// Find the amount
-		short amount = Util.getShort(buffer, (short) 0);
+		short amount = Util.getShort(data, (short) 0);
 
-		// Change the balance by amount
-		try {
-			JCSystem.beginTransaction();
-			Util.setShort(buffer, (short) 0, crypto.gain(amount));
-			responseSize = 2;
-			JCSystem.commitTransaction();
-		} catch (ISOException ie) {
-			UserException.throwIt((short) CONSTANTS.SW2_CREDITS_NEGATIVE);
-			return 0;
-		} catch (TransactionException te) {
-			UserException.throwIt(CONSTANTS.SW2_INTERNAL_ERROR);
-			return 0;
+		if (amount > CONSTANTS.CREDITS_MAX) {
+			throwException(CONSTANTS.SW2_CREDITS_TOO_MANY);
+		} else {
+			// Change the balance by amount
+			try {
+				JCSystem.beginTransaction();
+				responseSize = Util.setShort(buffer, (short) 0, crypto.gain(amount));
+				JCSystem.commitTransaction();
+			} catch (ISOException ie) {
+				throwException(CONSTANTS.SW2_CREDITS_NEGATIVE);
+			} catch (TransactionException te) {
+				throwException(CONSTANTS.SW2_INTERNAL_ERROR);
+			}
 		}
-
 		return responseSize;
 	}
 
@@ -668,40 +654,39 @@ public class Card extends Applet implements ISO7816 {
 	 * @param buffer
 	 *            the buffer holding the amount of (non-zero and non-negative) credits to subtract. Should <u>only</u> contain the amount. Is overwritten with
 	 *            the new balance.
-	 * @param length
-	 *            the length of the amount in the buffer (must be 2 or an exception will be thrown).
 	 * @return 1 if all went well, or 0 if an exception occurred.
 	 * @throws UserException
 	 *             <ul>
 	 *             <li>if the amount of credits to add is <= 0.</li>
-	 *             <li>if the length of the amount in <code>buffer</code> is not 2.</li>
 	 *             <li>if a balance change operation is already in progress.</li>
 	 *             </ul>
 	 */
 	private short subtract(byte[] buffer, short length) throws UserException {
 		short responseSize = 0;
+		byte[] data = new byte[length];
+		length = crypto.symDecrypt(buffer, (short) 0, length, data, (short) 0);
 
-		// Verify buffer length
+		// Verify (decrypted) buffer length: credits.length should be 2
 		if (length != CONSTANTS.CREDITS_LENGTH) {
-			UserException.throwIt((short) CONSTANTS.SW2_CREDITS_WRONG_LENGTH);
-			return 0;
+			throwException(CONSTANTS.SW2_CREDITS_WRONG_LENGTH);
 		}
-
+		
 		// Find the amount
-		short amount = Util.getShort(buffer, (short) 0);
+		short amount = Util.getShort(data, (short) 0);
 
-		// Change the balance by amount
-		try {
-			JCSystem.beginTransaction();
-			Util.setShort(buffer, (short) 0, crypto.spend(amount));
-			responseSize = 2;
-			JCSystem.commitTransaction();
-		} catch (ISOException ie) {
-			UserException.throwIt((short) CONSTANTS.SW2_CREDITS_NEGATIVE);
-			return 0;
-		} catch (TransactionException te) {
-			UserException.throwIt(CONSTANTS.SW2_INTERNAL_ERROR);
-			return 0;
+		if (amount > CONSTANTS.CREDITS_MAX) {
+			throwException(CONSTANTS.SW2_CREDITS_TOO_MANY);
+		} else {
+			// Change the balance by amount
+			try {
+				JCSystem.beginTransaction();
+				responseSize = Util.setShort(buffer, (short) 0, crypto.spend(amount));
+				JCSystem.commitTransaction();
+			} catch (ISOException ie) {
+				throwException(CONSTANTS.SW2_CREDITS_NEGATIVE);
+			} catch (TransactionException te) {
+				throwException(CONSTANTS.SW2_INTERNAL_ERROR);
+			}
 		}
 
 		return responseSize;
@@ -717,8 +702,7 @@ public class Card extends Applet implements ISO7816 {
 	private short checkCredits(byte[] buffer) {
 		short responseSize = 0;
 		if (crypto.authenticated()) {
-			Util.setShort(buffer, (short) 0, crypto.getBalance());
-			responseSize = 2;
+			responseSize = Util.setShort(buffer, (short) 0, crypto.getBalance());
 		} else {
 			throwException(CONSTANTS.SW1_COMMAND_NOT_ALLOWED_00, CONSTANTS.SW2_NO_AUTH_PERFORMED);
 			return 0;

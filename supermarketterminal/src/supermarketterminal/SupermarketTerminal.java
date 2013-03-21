@@ -6,6 +6,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
+import java.util.Arrays;
 
 import common.CONSTANTS;
 import common.CLI;
@@ -118,7 +119,7 @@ public class SupermarketTerminal {
 				
 				while (true) {
 					String correct = "";
-					addcredits = CLI.prompt("Please enter the amount of" +
+					addcredits = CLI.prompt("Please enter the amount of " +
 							"credits to be added to the customer's card: ");
 					
 					CLI.showln("Credits to be added: " + addcredits);
@@ -135,13 +136,18 @@ public class SupermarketTerminal {
 					}
 				}
 				
-				writeCredits(Integer.parseInt(addcredits));
+				try {
+					Short c = Short.parseShort(addcredits);
+				} catch (Exception e) {
+					System.out.println("Please insert a valid amount of credits between 0 and " + CONSTANTS.CREDITS_MAX);
+				}
+				writeCredits(Short.parseShort(addcredits));
 			} else if (Integer.parseInt(command) == 2) {
 				String removecredits = "";
 				
 				while (true) {
 					String correct = "";
-					removecredits = CLI.prompt("Please enter the amount of" +
+					removecredits = CLI.prompt("Please enter the amount of " +
 							"credits to be removed from the customer's card: ");
 					
 					CLI.showln("Credits to be removed: " + removecredits);
@@ -158,8 +164,14 @@ public class SupermarketTerminal {
 					}
 				}
 				
-				removeCredits(Integer.parseInt(removecredits));
-			} else if (Integer.parseInt(command) == 4) {	
+				try {
+					Short c = Short.parseShort(removecredits);
+				} catch (Exception e) {
+					System.out.println("Please insert a valid amount of credits between 0 and " + CONSTANTS.CREDITS_MAX);
+				}
+				removeCredits(Short.parseShort(removecredits));
+				
+			} else if (Integer.parseInt(command) == 3) {	
 				getCredits();
 			}
 			else if (Integer.parseInt(command) == 9) {
@@ -187,19 +199,21 @@ public class SupermarketTerminal {
 		if (!resp.success()) {
 			throw new SecurityException("Error checking balance.");
 		}
-		System.out.println("Balance: " + resp.toString());
+
+		short b = (short) Formatter.byteArrayToShort(resp.getData());
+		System.out.println("Balance: " + b);
 	}
 
 	/**
 	 * Send the "decrease balance" instruction to the card
 	 */
-	private void removeCredits(int credits) {
+	private void removeCredits(short credits) {
 		if (!session.isAuthenticated()) {
 			throw new SecurityException(
 					"Cannot remove credits, card not authenticated.");
 		}
 		byte[] creditsData = Formatter.toByteArray(credits);
-		//creditsData = crypto.sign(creditsData, privKey);
+
 		Response resp = com.sendCommand(CONSTANTS.INS_BAL_DEC,
 				creditsData);
 		if (resp == null) {
@@ -214,13 +228,14 @@ public class SupermarketTerminal {
 	/**
 	 * Send the "increase balance" instruction to the card
 	 */
-	private void writeCredits(int credits) {
+	private void writeCredits(short credits) {
 		if (!session.isAuthenticated()) {
 			throw new SecurityException(
 					"Cannot add credits, card not authenticated.");
 		}
+
 		byte[] creditsData = Formatter.toByteArray(credits);
-		//creditsData = crypto.sign(creditsData, privKey);
+
 		Response resp = com.sendCommand(CONSTANTS.INS_BAL_INC,
 				creditsData);
 		if (resp == null) {

@@ -125,24 +125,13 @@ public class AppletCommunication {
 			log(rapdu);
 		} catch (CardException e) {
 			System.err.println("Communication error: " + e.getMessage());
-			throw new SecurityException("Communication error: " + e.getMessage());
+			throw new SecurityException();
 		}
 		return rapdu;
 	}
 
 	public Response sendCommand(byte instruction, byte p1, byte p2, byte[] data) {
 		try {
-			/*
-			// Always add instruction byte.
-			if (data != null && data.length > 0) {
-				data = Arrays.copyOf(data, data.length + 1);
-				data[data.length - 1] = instruction;
-			} else {
-				data = new byte[] { instruction };
-			}
-			*/
-			
-			// send command
 			Response response = processCommand(instruction, p1, p2, data);
 			if (response == null) {
 				return null;
@@ -151,7 +140,7 @@ public class AppletCommunication {
 		} catch (SecurityException e) {
 			session.reset();
 			messageCounter = 0;
-			// System.err.println(e.getMessage());
+			System.err.println(e.getMessage());
 		}
 		return null;
 	}
@@ -182,40 +171,17 @@ public class AppletCommunication {
 		if (bytesToSend > CONSTANTS.APDU_DATA_SIZE_MAX) {
 			throw new SecurityException();
 		}
+
 		rapdu = sendSessionCommand(CONSTANTS.CLA_DEF, instruction, p1, p2, data);
 		System.out.println("Terminal received: " + rapdu);
 		return processResponse(rapdu);
 	}
 
 	private ResponseAPDU sendSessionCommand(int cla, int ins, int p1, int p2, byte[] data) {
-		
-		/*//TODO: vreemd stukje code, sommige instructies vereisen helemaal geen data namelijk.
-		if (data == null || data.length == 0) {
-			throw new SecurityException();
-		}
-		*/
-		
-		/*
-		// prepend counter byte
-		msg[0] = messageCounter;
-		// increment message counter
-		messageCounter++;
-		if ((messageCounter & 0xff) >= 254) {
-			throw new SecurityException();
-		}
-		System.arraycopy(data, 0, msg, 1, data.length);
-		
-		if (session.isAuthenticated()) {
-			msg = crypto.encryptAES(msg, session.getSessionKey());
-		}
-		
-		CommandAPDU apdu = new CommandAPDU(cla, ins, p1, p2, msg);
-		*/
-		
 		if (session.isAuthenticated()) {
 			data = crypto.encryptAES(data, session.getSessionKey());
 		}
-		
+
 		CommandAPDU apdu = new CommandAPDU(cla, ins, p1, p2, data);
 		return sendCommandAPDU(apdu);
 	}
@@ -226,7 +192,6 @@ public class AppletCommunication {
 		}
 
 		Response resp;
-		// Retrieve data from Response-APDU.
 		byte[] data = rapdu.getData();
 
 		if (data.length > 0) {
@@ -241,21 +206,9 @@ public class AppletCommunication {
 	}
 
 	private byte[] processSessionResponse(byte[] data) {
-		// Decrypt response
 		if (session.isAuthenticated()) {
 			data = crypto.decryptAES(data, session.getSessionKey());
 		}
-		/*
-		// Check and increment messagecounter
-		if (messageCounter != data[0]) {
-			throw new SecurityException();
-		} else {
-			messageCounter++;
-			// Strip the message counter from response.
-			data = Arrays.copyOfRange(data, 1, data.length);
-		}
-		*/
-		
 		return data;
 	}
 

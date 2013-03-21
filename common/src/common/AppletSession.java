@@ -98,7 +98,7 @@ public class AppletSession {
 				}
 		} catch (SecurityException e) {
 			reset();
-			// System.err.println(e.getMessage());
+			System.err.println(e.getMessage());
 		}
 		return false;
 	}
@@ -189,14 +189,7 @@ public class AppletSession {
 		if (!(Arrays.equals(receivedTerminalName,CONSTANTS.NAME_TERM))) {
 			throw new SecurityException("Terminal name on card does not match registered terminal name");
 		}
-		
-		/*
-		// save the card id
-		byte[] idCardBytes = Arrays.copyOfRange(data, CONSTANTS.RSA_SIGNED_PUBKEY_OFFSET_ID, CONSTANTS.RSA_SIGNED_PUBKEY_OFFSET_ID + CONSTANTS.ID_LENGTH);
-		ByteBuffer bb = ByteBuffer.wrap(idCardBytes);
-		this.cardId = bb.getInt();
-		*/
-		
+				
 		return cardNonce;
 	}
 
@@ -262,4 +255,5 @@ public class AppletSession {
 		// encrypted with the cards' public key
 		return Arrays.equals(nonceReceived, nonceTerminal);
 	}
+	
 }

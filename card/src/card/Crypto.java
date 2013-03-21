@@ -501,6 +501,8 @@ public final class Crypto {
 	 * 
 	 * @param buf
 	 *            the buffer to hold the key.
+	 * @param offset
+	 * 			  the offset in the buffer to place the key
 	 * @return the length of the data in the buffer.
 	 */
 	public short getPubKeyCard(byte[] buf, short offset) {
@@ -509,10 +511,9 @@ public final class Crypto {
 			Card.throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_AUTH_PARTNER_KEY_NOT_INIT);
 			return 0;
 		} else if (buf.length < CONSTANTS.RSA_PUBKEY_LENGTH) {
-			Card.throwException(CONSTANTS.SW1_WRONG_LENGTH, CONSTANTS.SW2_MORE_DATA);
+			Card.throwException(CONSTANTS.SW1_WRONG_LENGTH);
 			return 0;
 		} else {
-			// everything is fine
 			totalLength += pubKeyCard.getExponent(buf, (short) (CONSTANTS.PUB_KEY_CARD_EXP_OFF + offset));
 			totalLength += pubKeyCard.getModulus(buf, (short) (CONSTANTS.PUB_KEY_CARD_MOD_OFF + offset));
 			return totalLength;

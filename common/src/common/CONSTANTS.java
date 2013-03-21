@@ -48,15 +48,12 @@ public class CONSTANTS {
 
 	public static final byte INS_MORE_DATA = (byte) 0x0F;
 
-	// public static final byte INS_TEST_TEST_TEST = (byte) 0x04;
-
 	/* Indicators for session establishment */
 	public static final byte SESSION_ESTABLISHED = (byte) 0xCC;
 	public static final byte NO_ACTIVE_SESSION = (byte) 0xDD;
 
 	/* Success codes, as defined by ISO 7816, 5.1.3 */
 	public static final byte SW1_SUCCESS = (byte) 0x90;
-	// public static final byte SW1_MORE_DATA_AVAILABLE_00 = (byte) 0x61; // DO NOT USE
 
 	// Our self defined code to indicate further response data
 	// Use: ISOException.throwIt(((SW1_MORE_DATA << 8) & 0xff00) | SW2_MORE_DATA);
@@ -101,12 +98,12 @@ public class CONSTANTS {
 	public static final byte SW2_CREDITS_WRONG_LENGTH = (byte) 0xE0;
 	public static final byte SW2_CREDITS_INSUFFICIENT = (byte) 0xE1;
 	public static final byte SW2_CREDITS_NEGATIVE = (byte) 0xE2;
+	public static final byte SW2_CREDITS_TOO_MANY = (byte) 0xE3;
 
 	/* Security related issues */
 	public static final byte SW2_AUTH_OTHER_ERROR = (byte) 0xA0;
 	public static final byte SW2_AUTH_STEP_INCORRECT = (byte) 0xA1;
 	public static final byte SW2_AUTH_WRONG_NONCE = (byte) 0xA2;
-	// public static final byte SW2_AUTH_WRONG_CARID = (byte) 0xA3;
 	public static final byte SW2_AUTH_WRONG_PARTNER = (byte) 0xA4;
 	public static final byte SW2_AUTH_WRONG_2 = (byte) 0xA5;
 	public static final byte SW2_AUTH_PARTNER_KEY_NOT_INIT = (byte) 0xA6;
@@ -115,31 +112,13 @@ public class CONSTANTS {
 	public static final byte SW2_AUTH_INCORRECT_MESSAGE_LENGTH = (byte) 0xA9;
 	public static final byte SW2_AUTH_CARD_KEY_NOT_INIT = (byte) 0xAA;
 
-	// public static final byte SW2_SESSION_BROKEN = (byte) 0xC0;
-	// public static final byte SW2_SESSION_WRONG_NONCE = (byte) 0xC1;
 	public static final byte SW2_SESSION_ENCRYPT_ERR = (byte) 0xC2;
-	// public static final byte SW2_SESSION_WRONG_CTR = (byte) 0xC3;
-	// public static final byte SW2_SESSION_WRONG_SIG = (byte) 0xC4;
-
 	public static final byte SW2_CIPHERTEXT_NOT_ALIGNED = (byte) 0xC5;
-
-	// public static final byte SW2_MSG_CTR_OVERFLOW = (byte) 0xC6;
-
 	public static final byte SW2_UNSUPPORTED_CRYPTO_MODE = (byte) 0xC6;
 
 	/* Personalization issues */
 	public static final byte SW2_ALREADY_ISSUED = (byte) 0xB0;
 	public static final byte SW2_CARD_REVOKED = (byte) 0xB1;
-	// public static final byte SW2_PERS_ALREADY_DONE = (byte) 0xB0;
-	// public static final byte SW2_PERS_INCORRECT_LEN = (byte) 0xB1;
-	// public static final byte SW2_PERS_INVALID_SIG = (byte) 0xB2;
-	// public static final byte SW2_PERS_INVALID_PUBSIG = (byte) 0xB3;
-	// public static final byte SW2_PERS_NOT_PERSONALIZED = (byte) 0xB4;
-	// public static final byte SW2_PERS_SUCCESS = (byte) 0xBB;
-
-	/* Renting issues */
-	// public static final byte SW2_RENT_WRONG_LENGTH = (byte) 0xD0;
-	// public static final byte SW2_RENT_ALREADY_RENTED = (byte) 0xD1;
 
 	/* Internal issues */
 	public static final byte SW2_INTERNAL_ERROR = (byte) 0x6F;
@@ -157,76 +136,29 @@ public class CONSTANTS {
 	public static final short SEQ_LENGTH = (short) 4;
 	public static final short DATE_LENGTH = (short) 4;
 	public static final short CREDITS_LENGTH = (short) 2;
+	public static final short CREDITS_MAX = (short) 32767;
 
-	// Only when using RSA 1024 bit and AES 128 bit, obviously.
+	// Only when using RSA 512 bit and AES 128 bit, obviously.
 	public static final short AES_IV_LENGTH = (short) 16;
 	public static final short AES_KEY_LENGTH = (short) 16;
 	public static final short RSA_KEY_MOD_LENGTH = (short) 64;
 	public static final short RSA_KEY_PUBEXP_LENGTH = (short) 3;
 	public static final short RSA_KEY_PRIVEXP_LENGTH = (short) 64;
-	// public static final short RSA_KEY_CRT_COMP_LENGTH = (short) 64;
-	// public static final short RSA_SIGNATURE_LENGTH = (short) 128;
 
-	// Our RSA key buffer
+	// RSA key buffer
 	// Builds the following buffer: [ ID | MODULUS | EXPONENT ]
 	public static final short RSA_PUBKEY_OFFSET_ID = (short) 0;
 	public static final short RSA_PUBKEY_OFFSET_MOD = (short) (RSA_PUBKEY_OFFSET_ID + ID_LENGTH);
 	public static final short RSA_PUBKEY_OFFSET_EXP = (short) (RSA_PUBKEY_OFFSET_MOD + RSA_KEY_MOD_LENGTH);
 	public static final short RSA_PUBKEY_LENGTH = (short) (RSA_PUBKEY_OFFSET_EXP + RSA_KEY_PUBEXP_LENGTH);
 
-	// Their RSA key buffer
-	// public static final short RSA_SIGNED_PUBKEY_OFFSET_ID = (short) 0;
-	// public static final short RSA_SIGNED_PUBKEY_OFFSET_MOD = (short) (RSA_SIGNED_PUBKEY_OFFSET_ID + ID_LENGTH);
-	// public static final short RSA_SIGNED_PUBKEY_OFFSET_EXP = (short) (RSA_SIGNED_PUBKEY_OFFSET_MOD + RSA_KEY_MOD_LENGTH);
-	// public static final short RSA_SIGNED_PUBKEY_OFFSET_SIG = (short) (RSA_SIGNED_PUBKEY_OFFSET_EXP + RSA_KEY_PUBEXP_LENGTH);
-	// public static final short RSA_SIGNED_PUBKEY_LENGTH = (short) (RSA_SIGNED_PUBKEY_OFFSET_SIG + RSA_SIGNATURE_LENGTH);
-
-	// public static final short PERS_MSG_OFFSET_PRIVEXP = (short)
-	// (PERS_MSG_OFFSET_CARDID + ID_LENGTH);
-	// public static final short PERS_MSG_OFFSET_PRIV_P = (short) 0;
-	// public static final short PERS_MSG_OFFSET_PRIV_Q = (short) (PERS_MSG_OFFSET_PRIV_P + RSA_KEY_CRT_COMP_LENGTH);
-	// public static final short PERS_MSG_OFFSET_PRIV_DP = (short) (PERS_MSG_OFFSET_PRIV_Q + RSA_KEY_CRT_COMP_LENGTH);
-	// public static final short PERS_MSG_OFFSET_PRIV_DQ = (short) (PERS_MSG_OFFSET_PRIV_DP + RSA_KEY_CRT_COMP_LENGTH);
-	// public static final short PERS_MSG_OFFSET_PRIV_PQ = (short) (PERS_MSG_OFFSET_PRIV_DQ + RSA_KEY_CRT_COMP_LENGTH);
-	// public static final short PERS_MSG_OFFSET_MOD = (short)
-	// (PERS_MSG_OFFSET_PRIV_PQ + RSA_KEY_CRT_COMP_LENGTH);
-	// public static final short PERS_MSG_OFFSET_PUBKEY = (short) (PERS_MSG_OFFSET_PRIV_PQ + RSA_KEY_CRT_COMP_LENGTH);
-	// The above is NOT a bug, modulus is read twice from same location.
-	// public static final short PERS_MSG_LENGTH = (short) (PERS_MSG_OFFSET_PUBKEY + RSA_SIGNED_PUBKEY_LENGTH);
-
-	// public static final short CERT_OFFSET_CARDID = (short) 0;
-	// public static final short CERT_OFFSET_CARID = (short) (CERT_OFFSET_CARDID + ID_LENGTH);
-	// public static final short CERT_OFFSET_SEQNUM = (short) (CERT_OFFSET_CARID + ID_LENGTH);
-	// public static final short CERT_OFFSET_START = (short) (CERT_OFFSET_SEQNUM + SEQ_LENGTH);
-	// public static final short CERT_OFFSET_END = (short) (CERT_OFFSET_START + DATE_LENGTH);
-	// public static final short CERT_OFFSET_SIG = (short) (CERT_OFFSET_END + DATE_LENGTH);
-	// public static final short CERT_PLAIN_LENGTH = (short) CERT_OFFSET_SIG;
-	// public static final short CERT_LENGTH = (short) (CERT_OFFSET_SIG + RSA_SIGNATURE_LENGTH);
-
-	// public static final short RENT_MSG_OFFSET_PUB_EXP = (short) 0;
-	// public static final short RENT_MSG_OFFSET_PUB_MOD = (short) (RENT_MSG_OFFSET_PUB_EXP + RSA_KEY_PUBEXP_LENGTH);
-	// public static final short RENT_MSG_OFFSET_CERT = (short) (RENT_MSG_OFFSET_PUB_MOD + RSA_KEY_MOD_LENGTH);
-	// public static final short RENT_MSG_LENGTH = (short) (RENT_MSG_OFFSET_CERT + CERT_LENGTH);
-
-	/* Their first message of the handshake */
-	// public static final short AUTH_MSG_1_OFFSET_NA = (short) 0;
-	// public static final short AUTH_MSG_1_OFFSET_ID = (short) (AUTH_MSG_1_OFFSET_NA + NONCE_LENGTH);
-	// public static final short AUTH_MSG_1_OFFSET_SIGNED_PUBKEY = (short) (AUTH_MSG_1_OFFSET_NA + NONCE_LENGTH); // Not a bug.
-	// public static final short AUTH_MSG_1_LENGTH = (short) (AUTH_MSG_1_OFFSET_SIGNED_PUBKEY + RSA_SIGNED_PUBKEY_LENGTH);
-
-	// Our first message of the handshake
+	// The first message of the handshake
 	// Builds the following buffer: [ T ]
 	// Sent from the Terminal to the Card
 	public static final short AUTH_MSG_1_OFFSET_NAME_TERM = (short) 0;
 	public static final short AUTH_MSG_1_TOTAL_LENGTH = (short) (AUTH_MSG_1_OFFSET_NAME_TERM + NAME_LENGTH);
 
-	/* Their second message of the handshake */
-	// public static final short AUTH_MSG_2_OFFSET_NA = (short) 0;
-	// public static final short AUTH_MSG_2_OFFSET_NB = (short) (AUTH_MSG_2_OFFSET_NA + NONCE_LENGTH);
-	// public static final short AUTH_MSG_2_OFFSET_ID = (short) (AUTH_MSG_2_OFFSET_NB + NONCE_LENGTH);
-	// public static final short AUTH_MSG_2_LENGTH = (short) (AUTH_MSG_2_OFFSET_ID + ID_LENGTH);
-
-	// Our second message of the handshake
+	// The second message of the handshake
 	// Builds the following buffer: [ C | T | NC ]
 	// Sent from the Card to the Terminal
 	public static final short AUTH_MSG_2_OFFSET_NAME_CARD = (short) 0;
@@ -234,12 +166,7 @@ public class CONSTANTS {
 	public static final short AUTH_MSG_2_OFFSET_NC = (short) (AUTH_MSG_2_OFFSET_NAME_TERM + NAME_LENGTH);
 	public static final short AUTH_MSG_2_TOTAL_LENGTH = (short) (AUTH_MSG_2_OFFSET_NC + NONCE_LENGTH);
 
-	/* Their third message of the handshake */
-	// public static final short AUTH_MSG_3_OFFSET_NB = (short) 0;
-	// public static final short AUTH_MSG_3_OFFSET_CERT = (short) (AUTH_MSG_3_OFFSET_NB + NONCE_LENGTH);
-	// public static final short AUTH_MSG_3_LENGTH = (short) (AUTH_MSG_3_OFFSET_CERT + CERT_LENGTH);
-
-	// Our third message of the handshake
+	// The third message of the handshake
 	// Builds the following buffer: [ T | C | N_C | N_T ]
 	// Sent from the Terminal to the Card
 	public static final short AUTH_MSG_3_OFFSET_NAME_TERM = (short) 0;
@@ -248,7 +175,7 @@ public class CONSTANTS {
 	public static final short AUTH_MSG_3_OFFSET_NT = (short) (AUTH_MSG_3_OFFSET_NC + NONCE_LENGTH);
 	public static final short AUTH_MSG_3_TOTAL_LENGTH = (short) (AUTH_MSG_3_OFFSET_NT + NONCE_LENGTH);
 
-	// Our fourth message of the handshake
+	// The fourth message of the handshake
 	// Builds the following buffer: [ C | T | N_T | k ]
 	// Sent from the Card to the Terminal
 	public static final short AUTH_MSG_4_OFFSET_NAME_CARD = (short) 0;
@@ -259,10 +186,5 @@ public class CONSTANTS {
 
 	public static final short PUB_KEY_CARD_EXP_OFF = (short) 0;
 	public static final short PUB_KEY_CARD_MOD_OFF = (short) (PUB_KEY_CARD_EXP_OFF + RSA_KEY_PUBEXP_LENGTH);
-
-	
-	// public static final short CREDITS_MSG_OFFSET_VAL = (short) 0;
-	// public static final short CREDITS_MSG_OFFSET_SIG = (short) (CREDITS_MSG_OFFSET_VAL + CREDITS_LENGTH);
-	// public static final short CREDITS_MSG_LENGTH = (short) (CREDITS_MSG_OFFSET_SIG + RSA_SIGNATURE_LENGTH);
-
 }
+
