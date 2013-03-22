@@ -14,10 +14,10 @@ interface BackOffice {
 
 	KeyPair getSupermarketKeyPair() throws BackOfficeException;
 
-	IDKeyPair issueNewCard(Customer client) throws BackOfficeException;
+	void issueCard(Customer client) throws BackOfficeException;
 
 	void deleteCard(int cardID);
-	
+		
 	void deleteCustomer(int customerID);
 
 	int getCardID(Customer client) throws BackOfficeException;
@@ -29,8 +29,6 @@ interface BackOffice {
 	Customer getCustomerByName(String name) throws BackOfficeException;
 
 	Customer getCustomerByCard(int cardID) throws BackOfficeException;
-
-	//byte[] sign(byte[] obj) throws BackOfficeException;
 
 	List<Customer> getCustomers() throws BackOfficeException;
 }

@@ -21,14 +21,12 @@ public final class Formatter {
 	public static final String toHexString(byte[] bytes) {
 		StringBuilder sb = new StringBuilder();
 		for (byte b : bytes) {
-			// sb.append("(byte) ");
 			sb.append("0x");
 			int v = b & 0xff;
 			if (v < 16) {
 				sb.append('0');
 			}
 			sb.append(Integer.toHexString(v));
-			// sb.append(",");
 			sb.append(" ");
 		}
 		return sb.toString();

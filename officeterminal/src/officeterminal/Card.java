@@ -1,7 +1,6 @@
 package officeterminal;
 
 import java.io.Serializable;
-import java.security.interfaces.RSAPublicKey;
 
 /**
  * Internal representation of a card.
@@ -16,17 +15,15 @@ public class Card implements Serializable {
 	private int id;
 	private short credits;
 	private Customer customer;
-	private RSAPublicKey publicKey;
 
-	Card(RSAPublicKey publicKey, int cardId, short credits, Customer customer) {
-		this.publicKey = publicKey;
+	Card(int cardId, short credits, Customer customer) {
 		this.id = cardId;
 		this.credits = credits;
 		this.customer = customer;
 	}
 
 	public Card clone() {
-		return new Card(publicKey, id, credits, customer);
+		return new Card(id, credits, customer);
 	}
 
 	Customer getCustomer() {

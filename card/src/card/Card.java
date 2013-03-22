@@ -25,7 +25,7 @@ public class Card extends Applet implements ISO7816 {
 	/* Indices for the authentication status buffer */
 	private static final short AUTH_STEP = 0;
 	private static final short AUTH_PARTNER = 1;
-
+	
 	/* Buffers in RAM */
 
 	/** Holds at most one APDU worth of data */
@@ -43,9 +43,14 @@ public class Card extends Applet implements ISO7816 {
 	/** Holds the terminal's name received in authentication step four */
 	byte[] partnerName;
 
-	/** The applet state (<code>REVOKED</code> or <code>ISSUED</code>). */
+	/** The applet state (<code>REVOKED</code>, <code>INIT</code> or <code>ISSUED</code>). */
+	// for usability during the practical, we set the state = issued, since otherwise we would have
+	// to personalize the card each time we uploaded new code to the card.
 	byte state = CONSTANTS.STATE_ISSUED;
 
+	/** Card ID */
+	byte[] cardID = new byte[CONSTANTS.NAME_LENGTH];
+	
 	/** The cryptograhy object. Handles all encryption and decryption and also stores the current balance of the card */
 	Crypto crypto;
 
@@ -189,6 +194,15 @@ public class Card extends Applet implements ISO7816 {
 				throwException(CONSTANTS.SW1_INS_NOT_SUPPORTED, ins);
 			}
 			break;
+		case CONSTANTS.STATE_INIT:
+			// Card has to be personalized prior to use
+			switch (ins) {
+			case CONSTANTS.INS_PERSONALIZE_WRITE:
+				personalize(buffer, length);
+				break;
+			default:
+				throwException(CONSTANTS.SW1_INS_NOT_SUPPORTED, ins);
+			}
 		case CONSTANTS.STATE_REVOKED:
 			throwException(CONSTANTS.SW1_COMMAND_NOT_ALLOWED_00, CONSTANTS.SW2_CARD_REVOKED);
 		default:
@@ -329,7 +343,103 @@ public class Card extends Applet implements ISO7816 {
 		apdu.sendBytesLong(data, (short) 0, length);
 	}
 
-	short authenticate(byte to, byte step, short length, byte[] buffer) throws UserException {
+	/**
+	 * Check if card has been issued
+	 * @return true if card has been issued, false if otherwise
+	 */
+	public boolean isPersonalized() {
+		return (state == CONSTANTS.STATE_ISSUED);
+	}
+	
+	/**
+	 * Personalize the card
+	 * @param buffer the input buffer
+	 * @param length length of input buffer
+	 */
+	private void personalize(byte[] buffer, short length) {
+		if (isPersonalized()) {
+			throwException(CONSTANTS.SW1_ALREADY_PERSONALIZED);
+		}
+		
+		JCSystem.beginTransaction();
+		Util.arrayCopyNonAtomic(buffer, (short) 0, cardID, (short) 0, length);
+		state = CONSTANTS.STATE_ISSUED;
+		JCSystem.commitTransaction();
+		
+		return;
+	}
+	
+	/* AUTHENTICATION PROTOCOL
+	 * CAPITALS represent the message that is being sent. Terminal/Card side indicate the side that has to take action on the message.
+	 */
+	// --------------------
+	// ONE - Terminal side:
+	// --------------------
+	// 1. Send NAME_TERMINAL
+	// T -> C : T
+	// ----------------
+	// ONE - Card side:
+	// ----------------
+	// 1. decrypt with RSA
+	// 2. verify data field length is 1 and assume it contains NAME_TERMINAL
+
+	// ----------------
+	// TWO - Card side:
+	// ----------------
+	// 3. Generate nonce N_C
+	// 4. Concatenate CONSTANTS.NAME_CARD, CONSTANTS.NAME_TERMINAL and N_C into challenge1
+	// 5. Encrypt challenge1 with RSA and send
+	// C -> T : {C, T, N_C}pkT
+
+	// --------------------
+	// TWO - Terminal side:
+	// --------------------
+	// 1. Decrypt with RSA
+	// 2. Retrieve decrypted_challenge[0] and store
+	// 3. Verify decrypted_challenge[1] == CONSTANTS.NAME_TERMINAL
+	// 4. Assume byte[] cardNonce = decrypted_challenge[1-len]
+	// ----------------------
+	// THREE - Terminal side:
+	// ----------------------
+	// 5. Generate nonce N_T
+	// 6. Concatenate CONSTANTS.NAME_TERMINAL, CONSTANTS.NAME_CARD, N_C and N_T into response1challenge2
+	// 7. Encrypt response1challenge2 with RSA and send:
+	// T -> C : {T, C, N_C, N_T}pkC
+
+	// ------------------
+	// THREE - Card side:
+	// ------------------
+	// 1. Decrypt with RSA
+	// 2. Verify NAME_TERMINAL (from step 1) == parameter 2
+	// 3. Verify parameter 3 == N_C (from step 2)
+	// 4. Store parameter 4 as terminalNonce
+	// -----------------
+	// FOUR - Card side:
+	// -----------------
+	// 5. Generate a new AES-128 Session Key k
+	// 6. Concatenate NAME_CARD, NAME_TERMINAL, terminalNonce as well as the AES Session Key m into response2
+	// 7. Encrypt response2 with RSA and send:
+	// C -> T : {C, T, N_T, k}pkT
+
+	// ---------------------
+	// FOUR - Terminal side:
+	// ---------------------
+	// 1. Decrypt with RSA
+	// 2. Verify C and T match previous values
+	// 3. Verify N_T matches
+	// 4. Store k as the session key to use until the card disconnects
+	// 
+	
+	/**
+	 * Authenticates the card to the terminal and vice versa
+	 * @param to authentication partner
+	 * @param step the current authentication step
+	 * @param length length of the input buffer
+	 * @param buffer the input buffer
+	 * @return length of output buffer
+	 * @throws UserException
+	 */
+	private short authenticate(byte to, byte step, short length, byte[] buffer) throws UserException {
 		short outLength = 0;
 		// Check if we are in the correct step
 		if (step != authState[AUTH_STEP] + 1) {
@@ -419,7 +529,8 @@ public class Card extends Applet implements ISO7816 {
 
 		try {
 			// Add this card's name
-			responseSize += crypto.getCardName(buffer, CONSTANTS.AUTH_MSG_2_OFFSET_NAME_CARD);
+			responseSize += Util.arrayCopyNonAtomic(cardID, (short) 0, buffer, 
+					CONSTANTS.AUTH_MSG_2_OFFSET_NAME_CARD, CONSTANTS.NAME_LENGTH);
 
 			// Add the previously found partner name
 			responseSize += Util.arrayCopyNonAtomic(partnerName, (short) 0, buffer,
@@ -481,7 +592,7 @@ public class Card extends Applet implements ISO7816 {
 		// The length is correct
 
 		// check for my name in the data, just to make sure
-		if (Util.arrayCompare(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NAME_CARD, CONSTANTS.NAME_CARD, (short) 0, CONSTANTS.NAME_LENGTH) != 0) {
+		if (Util.arrayCompare(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NAME_CARD, cardID, (short) 0, CONSTANTS.NAME_LENGTH) != 0) {
 			reset();
 			throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_WRONG_PARTNER);
 			return 0;
@@ -490,16 +601,6 @@ public class Card extends Applet implements ISO7816 {
 
 		// store the name of the terminal locally to ensure sending to the same partner
 		Util.arrayCopyNonAtomic(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NAME_TERM, partnerName, (short) 0, CONSTANTS.NAME_LENGTH);
-
-		//TODO: check whether the terminalname matches the one we found in step 1
-
-		// This check currently fails, because authState[AUTH_PARTNER] was not initialized in step 1
-		// Instead we initialized authPartner[0] with one byte representing the partner
-		// if (authState[AUTH_PARTNER] != buffer[CONSTANTS.AUTH_MSG_3_OFFSET_NAME_TERM]) {
-		// reset();
-		// throwException(CONSTANTS.SW1_AUTH_EXCEPTION, CONSTANTS.SW2_AUTH_WRONG_PARTNER);
-		// return 0;
-		// } // the data contains the same terminal name as we found in step 1
 
 		// Check if the challenge has been solved by comparing the received nonce with the one from step 1
 		if (!crypto.checkCardNonce(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NC)) {
@@ -542,68 +643,6 @@ public class Card extends Applet implements ISO7816 {
 		return responseSize;
 	}
 
-	// private void handshakePseudoCode() {
-	/*
-	 * CAPITALS represent the message that is being sent. Terminal/Card side indicate the side that has to take action on the message.
-	 */
-	// --------------------
-	// ONE - Terminal side:
-	// --------------------
-	// 1. Send NAME_TERMINAL
-	// T -> C : T
-	// ----------------
-	// ONE - Card side:
-	// ----------------
-	// 1. decrypt with RSA
-	// 2. verify data field length is 1 and assume it contains NAME_TERMINAL
-
-	// ----------------
-	// TWO - Card side:
-	// ----------------
-	// 3. Generate nonce N_C
-	// 4. Concatenate CONSTANTS.NAME_CARD, CONSTANTS.NAME_TERMINAL and N_C into challenge1
-	// 5. Encrypt challenge1 with RSA and send
-	// C -> T : {C, T, N_C}pkT
-
-	// --------------------
-	// TWO - Terminal side:
-	// --------------------
-	// 1. Decrypt with RSA
-	// 2. Retrieve decrypted_challenge[0] and store
-	// 3. Verify decrypted_challenge[1] == CONSTANTS.NAME_TERMINAL
-	// 4. Assume byte[] cardNonce = decrypted_challenge[1-len]
-	// ----------------------
-	// THREE - Terminal side:
-	// ----------------------
-	// 5. Generate nonce N_T
-	// 6. Concatenate CONSTANTS.NAME_TERMINAL, CONSTANTS.NAME_CARD, N_C and N_T into response1challenge2
-	// 7. Encrypt response1challenge2 with RSA and send:
-	// T -> C : {T, C, N_C, N_T}pkC
-
-	// ------------------
-	// THREE - Card side:
-	// ------------------
-	// 1. Decrypt with RSA
-	// 2. Verify NAME_TERMINAL (from step 1) == parameter 2
-	// 3. Verify parameter 3 == N_C (from step 2)
-	// 4. Store parameter 4 as terminalNonce
-	// -----------------
-	// FOUR - Card side:
-	// -----------------
-	// 5. Generate a new AES-128 Session Key k
-	// 6. Concatenate NAME_CARD, NAME_TERMINAL, terminalNonce as well as the AES Session Key m into response2
-	// 7. Encrypt response2 with RSA and send:
-	// C -> T : {C, T, N_T, k}pkT
-
-	// ---------------------
-	// FOUR - Terminal side:
-	// ---------------------
-	// 1. Decrypt with RSA
-	// 2. Verify C and T match previous values
-	// 3. Verify N_T matches
-	// 4. Store k as the session key to use until the card disconnects
-	// }
-
 	/**
 	 * Increments the balance of <code>this</code> card by a number of credits.
 	 * 
@@ -620,17 +659,27 @@ public class Card extends Applet implements ISO7816 {
 	private short add(byte[] buffer, short length) throws UserException {
 		short responseSize = 0;
 		byte[] data = new byte[length];
-		length = crypto.symDecrypt(buffer, (short) 0, length, data, (short) 0);
-
+		byte[] hash = new byte[CONSTANTS.MAC_LENGTH];
+		byte[] credits = new byte[CONSTANTS.CREDITS_LENGTH];
 		
-		// Verify (decrypted) buffer length: credits.length should be 2
-		if (length != CONSTANTS.CREDITS_LENGTH) {
+		length = crypto.symDecrypt(buffer, (short) 0, length, data, (short) 0);
+		
+		// Verify (decrypted) buffer length
+		if (length != CONSTANTS.CREDITS_LENGTH + CONSTANTS.MAC_LENGTH) {
 			throwException(CONSTANTS.SW2_CREDITS_WRONG_LENGTH);
 		}
 		
+		Util.arrayCopyNonAtomic(data, CONSTANTS.CREDITS_LENGTH, hash, (short) 0, CONSTANTS.MAC_LENGTH);
+		Util.arrayCopyNonAtomic(data, (short) 0, credits, (short) 0, CONSTANTS.CREDITS_LENGTH);
+	
+		// Verify the hashed credits indeed equals the hash of credits
+		if (!crypto.verifyHash(credits, hash)) {
+			throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_WRONG_HASH);
+		}
+		
 		// Find the amount
-		short amount = Util.getShort(data, (short) 0);
-
+		short amount = Util.getShort(credits, (short) 0);
+		
 		if (amount > CONSTANTS.CREDITS_MAX) {
 			throwException(CONSTANTS.SW2_CREDITS_TOO_MANY);
 		} else {
@@ -664,11 +713,22 @@ public class Card extends Applet implements ISO7816 {
 	private short subtract(byte[] buffer, short length) throws UserException {
 		short responseSize = 0;
 		byte[] data = new byte[length];
+		byte[] hash = new byte[CONSTANTS.MAC_LENGTH];
+		byte[] credits = new byte[CONSTANTS.CREDITS_LENGTH];
+		
 		length = crypto.symDecrypt(buffer, (short) 0, length, data, (short) 0);
-
-		// Verify (decrypted) buffer length: credits.length should be 2
-		if (length != CONSTANTS.CREDITS_LENGTH) {
+		
+		// Verify (decrypted) buffer length
+		if (length != CONSTANTS.CREDITS_LENGTH + CONSTANTS.MAC_LENGTH) {
 			throwException(CONSTANTS.SW2_CREDITS_WRONG_LENGTH);
+		}
+		
+		Util.arrayCopyNonAtomic(data, CONSTANTS.CREDITS_LENGTH, hash, (short) 0, CONSTANTS.MAC_LENGTH);
+		Util.arrayCopyNonAtomic(data, (short) 0, credits, (short) 0, CONSTANTS.CREDITS_LENGTH);
+	
+		// Verify the hashed credits indeed equals the hash of credits
+		if (!crypto.verifyHash(credits, hash)) {
+			throwException(CONSTANTS.SW1_CRYPTO_EXCEPTION, CONSTANTS.SW2_WRONG_HASH);
 		}
 		
 		// Find the amount

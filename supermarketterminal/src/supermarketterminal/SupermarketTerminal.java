@@ -6,7 +6,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
-import java.util.Arrays;
 
 import common.CONSTANTS;
 import common.CLI;
@@ -55,7 +54,7 @@ public class SupermarketTerminal {
 		System.out.println("Welcome to cash register " + cashRegisterId);
 		loadKeyFiles();
 		
-		session = new AppletSession(supermarketPublicKey, supermarketPrivKey, cashRegisterId);
+		session = new AppletSession(supermarketPrivKey);
 		com = new AppletCommunication(session);
 		crypto = new TerminalCrypto();
 		
@@ -69,7 +68,6 @@ public class SupermarketTerminal {
 	
 	private void loadKeyFiles() {
 		try {
-			//String cashRegister = "CashRegister_" + this.cashRegisterId;
 			supermarketPrivKey = (RSAPrivateKey) KeyManager.loadKeyPair("supermarket")
 					.getPrivate();
 			supermarketPublicKey = (RSAPublicKey) KeyManager.loadKeyPair("supermarket")
@@ -99,7 +97,7 @@ public class SupermarketTerminal {
 			System.err.println("Authentication error.");
 			return;
 		}
-		cardId = session.getCardId();
+		cardId = session.getCardIdAsInt();
 		
 		System.out.println("Succesfully authenticated card " + cardId);
 		

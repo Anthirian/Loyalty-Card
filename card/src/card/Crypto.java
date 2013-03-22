@@ -9,6 +9,7 @@ import javacard.security.CryptoException;
 import javacard.security.Key;
 import javacard.security.KeyBuilder;
 import javacard.security.KeyPair;
+import javacard.security.MessageDigest;
 import javacard.security.RSAPrivateCrtKey;
 import javacard.security.RSAPublicKey;
 import javacard.security.RandomData; //import javacard.security.Signature;
@@ -30,8 +31,8 @@ public final class Crypto {
 	private byte[] cardNonce;
 	private byte[] tmpKey;
 	private AESKey sessionKey;
+	private MessageDigest digest;
 
-	// private byte[] pubKeyCard;
 	private RSAPrivateCrtKey privKeyCard;
 
 	/** The public key of the supermarket */
@@ -78,9 +79,11 @@ public final class Crypto {
 		rsaCipher = Cipher.getInstance(Cipher.ALG_RSA_PKCS1, false);
 		aesCipher = Cipher.getInstance(Cipher.ALG_AES_BLOCK_128_CBC_NOPAD, false);
 
+		digest = MessageDigest.getInstance(MessageDigest.ALG_SHA, false);
+		
 		cardNonce = JCSystem.makeTransientByteArray(CONSTANTS.NONCE_LENGTH, JCSystem.CLEAR_ON_DESELECT);
 		tmpKey = JCSystem.makeTransientByteArray(CONSTANTS.AES_KEY_LENGTH, JCSystem.CLEAR_ON_DESELECT);
-
+		
 		random = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
 
 		authState = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
@@ -259,6 +262,18 @@ public final class Crypto {
 	}
 
 	/**
+	 * Compare the hashed input to a given hash
+	 * @param input input buffer 
+	 * @param hash given hash
+	 * @return True if hash(input) equals hash
+	 */
+	public boolean verifyHash(byte[] input, byte[] hash) {
+		byte[] hashedInput = new byte[CONSTANTS.MAC_LENGTH];
+		digest.doFinal(input, (short) 0, (short) input.length, hashedInput, (short) 0);
+		return (Util.arrayCompare(hashedInput, (short) 0, hash, (short) 0, CONSTANTS.MAC_LENGTH) == 0);
+	}
+	
+	/**
 	 * Generates the AES session key. This key is used until the card is removed from the terminal.
 	 */
 	void generateSessionKey() {
@@ -289,7 +304,7 @@ public final class Crypto {
 	boolean checkCardNonce(byte[] buffer, short offset) {
 		return Util.arrayCompare(buffer, CONSTANTS.AUTH_MSG_3_OFFSET_NC, cardNonce, (short) 0, CONSTANTS.NONCE_LENGTH) == 0;
 	}
-
+	
 	/**
 	 * Fill an entire buffer with random values.
 	 * 

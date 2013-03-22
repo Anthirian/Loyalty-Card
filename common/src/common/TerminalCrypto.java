@@ -1,24 +1,14 @@
 package common;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
-import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.security.Signature;
-import java.security.SignatureException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
-
-//import javacard.security.KeyBuilder;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -28,8 +18,6 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-
-//import card.SupermarketRSAKey;
 
 /**
  * The class handling all the crypto in the terminal
@@ -42,7 +30,7 @@ public class TerminalCrypto {
 	private Cipher AESCipher;
 	private KeyGenerator AESKeyGen;
 	private IvParameterSpec AESIvSpec;
-	//private Signature RSASign;
+	private MessageDigest digest;
 	
 	public TerminalCrypto() {
 		// initialize cipher classes
@@ -52,11 +40,11 @@ public class TerminalCrypto {
 			AESKeyGen = KeyGenerator.getInstance("AES");
 			AESKeyGen.init(128);
 			AESIvSpec = new IvParameterSpec(new byte[16]);
-			//RSASign = Signature.getInstance("SHA1withRSA");
+			digest = MessageDigest.getInstance("SHA-1");
 		} catch (NoSuchAlgorithmException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
 		} catch (NoSuchPaddingException e) {
-			// e.printStackTrace();
+			e.printStackTrace();
 		}
 	}
 	
@@ -73,8 +61,7 @@ public class TerminalCrypto {
 		data = encryptAES(data, AESKey);
 		// encrypt the key
 		byte[] encryptedAESKey = encryptRSA(AESKey, pubKey);
-		// append the 128 byte RSA encrypted AES key to the end of the cipher
-		// text
+		// append the 128 byte RSA encrypted AES key to the end of the ciphertext
 		data = Arrays.copyOf(data, data.length + 128);
 		System.arraycopy(encryptedAESKey, 0, data, data.length - 128, 128);
 		return data;
@@ -87,8 +74,7 @@ public class TerminalCrypto {
 	 * @return decrypted data
 	 */
 	public byte[] decrypt(byte[] data, RSAPrivateKey privKey) {
-		// extract the 128 byte RSA encrypted AES key from the end of the cipher
-		// text
+		// extract the 128 byte RSA encrypted AES key from the end of the ciphertext
 		byte[] encryptedAESKey = Arrays.copyOfRange(data, data.length - 128,
 				data.length);
 		data = Arrays.copyOfRange(data, 0, data.length - 128);
@@ -98,74 +84,6 @@ public class TerminalCrypto {
 		data = decryptAES(data, AESKey);
 		return data;
 	}
-	
-	/**
-	 * Sign data with a specific private RSA key
-	 * @param data data to be signed
-	 * @param privKey private RSA key to sign data
-	 * @return signed data
-	 */
-	/*
-	public byte[] sign(byte[] data, RSAPrivateKey privKey) {
-		try {
-			RSASign.initSign(privKey);
-			RSASign.update(data);
-			byte[] signature = RSASign.sign();
-			if (signature.length != CONSTANTS.RSA_SIGNATURE_LENGTH) {
-				System.err
-						.println("Signature of the car certificate is of incorrect size. Aborting.");
-				return null;
-			}
-			// append the signature to the end of the data array
-			data = Arrays.copyOf(data, data.length
-					+ CONSTANTS.RSA_SIGNATURE_LENGTH);
-			System.arraycopy(signature, 0, data, data.length
-					- CONSTANTS.RSA_SIGNATURE_LENGTH,
-					CONSTANTS.RSA_SIGNATURE_LENGTH);
-			return data;
-		} catch (IllegalArgumentException e) {
-			// e.printStackTrace();
-		} catch (InvalidKeyException e) {
-			// e.printStackTrace();
-		} catch (SignatureException e) {
-			// e.printStackTrace();
-		}
-		return null;
-	}
-	*/
-	
-	/**
-	 * Verify a signature signed with a private RSA key, using the corresponding
-	 * public RSA key, and return unsigned data
-	 * @param data the signed data
-	 * @param pubKey the public RSA key to verify the signature
-	 * @return data without the signature
-	 * @throws SignatureException
-	 */
-	/*
-	public byte[] verify(byte[] data, RSAPublicKey pubKey)
-			throws SignatureException {
-		try {
-			// extract the 128 byte signature from the byte array of data
-			byte[] signature = Arrays.copyOfRange(data, data.length - 128,
-					data.length);
-			data = Arrays.copyOfRange(data, 0, data.length - 128);
-			// validate the signature
-			RSASign.initVerify(pubKey);
-			RSASign.update(data);
-			if (RSASign.verify(signature)) {
-				return data;
-			}
-		} catch (IllegalArgumentException e) {
-			// e.printStackTrace();
-		} catch (SignatureException e) {
-			// e.printStackTrace();
-		} catch (InvalidKeyException e) {
-			// e.printStackTrace();
-		}
-		throw new SignatureException();
-	}
-	*/
 	
 	/**
 	 * Generate a random nonce
@@ -290,6 +208,11 @@ public class TerminalCrypto {
 		}
 	}
 
+	/**
+	 * Pad plaintext data to be encrypted with AES
+	 * @param data the data to be padded
+	 * @return padded data with length of multiple of block size
+	 */
 	private byte[] padAES(byte[] data) {
 		int cipherLen = data.length + 2;
 		cipherLen += (16 - (cipherLen % 16));
@@ -300,12 +223,29 @@ public class TerminalCrypto {
 		return newData;
 	}
 	
+	/**
+	 * Strip padding from the AES-decrypted data
+	 * @param data the decrypted data with padding bytes
+	 * @return the decrypted data without padding bytes
+	 */
 	private byte[] stripPaddingAES(byte[] data) {
 		byte[] pad = Arrays.copyOfRange(data, 0, 2);
 		int padding = Formatter.byteArrayToShort(pad);
 		return Arrays.copyOfRange(data, 2, 2 + padding);
 	}
 	
+	/**
+	 * Hashes the input data
+	 * @param data the input data
+	 * @return a 20 byte MAC of the input data
+	 */
+	public byte[] hash(byte[] data) {
+		digest.update(data);
+		return digest.digest();
+	}
+	
+	/*
+	//for debugging: print byte buffer as hexadecimal
 	private static void printHex(String msg, byte buf[]) {
 		StringBuffer strbuf = new StringBuffer(buf.length * 2);
 		for (int i = 0; i < buf.length; i++) {
@@ -316,14 +256,26 @@ public class TerminalCrypto {
 		}
 		System.out.println(msg + ": " + strbuf.toString());
 	}
+	*/
 	
+	// main function for debugging purposes only!
 	// testing encryption, signing, verification and decryption
 	public static void main(String[] arg) {
 		try {
 			// generate keys
 			KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
 			generator.initialize(512);
-			KeyPair keypair;
+			//KeyPair keypair;
+			
+			TerminalCrypto pk = new TerminalCrypto();
+			byte[] data = new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+					12, 13, 14, 15, 16 };
+			
+			System.out.println(Arrays.toString(data));
+			System.out.println(Arrays.toString(pk.hash(data)));
+				
+			
+			/*
 			try {
 				keypair = KeyManager.loadKeyPair("/home/javacard/workspace/Loyalty-Card/officeterminal/keys/","supermarket");
 				RSAPublicKey pubKey = (RSAPublicKey) keypair.getPublic();
@@ -352,7 +304,7 @@ public class TerminalCrypto {
 				BigInteger testtest = new BigInteger (array);
 				System.out.println(testtest);
 				
-				/*
+				
 				// perform encryption and decryption with test data
 				
 				TerminalCrypto pk = new TerminalCrypto();
@@ -364,31 +316,14 @@ public class TerminalCrypto {
 				
 				data = pk.decryptRSA(data, privKey);
 				printHex("After decryption", data);
-				*/
+				
 			} catch (FileNotFoundException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (InvalidKeySpecException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			
-			
-			
-			
-			/*
-			try {
-				data = pk.verify(data, pubKey);
-			} catch (SignatureException e) {
-				e.printStackTrace();
-			}
-			*/
-			/*
-			//printHex("After verify", data);
-			
 			*/
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();

@@ -3,11 +3,13 @@ package officeterminal;
 import common.AppletSession;
 import common.CLI;
 import common.AppletCommunication;
+import common.CONSTANTS;
+import common.Formatter;
+import common.Response;
 
 import java.io.IOException;
 import java.security.Security;
 import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,8 +62,7 @@ public class OfficeTerminal {
 
 		try {
 			RSAPrivateKey supermarketPrivateKey = (RSAPrivateKey) office.getSupermarketKeyPair().getPrivate();
-			RSAPublicKey supermarketPublicKey = (RSAPublicKey) office.getSupermarketKeyPair().getPublic();
-			session = new AppletSession(supermarketPublicKey, supermarketPrivateKey, 0);
+			session = new AppletSession(supermarketPrivateKey);
 		} catch (BackOfficeException e) {
 			System.err.println("Failed to fetch supermarket private key: " + e.getMessage());
 		}
@@ -75,9 +76,9 @@ public class OfficeTerminal {
 	 */
 	public Customer getCustomer() {
 		try {
-			return office.getCustomerByCard(session.getCardId());
+			return office.getCustomerByCard(session.getCardIdAsInt());
 		} catch (BackOfficeException e) {
-			// System.err.println("Cannot get customer. Card not authenticated.");
+			System.err.println("Cannot get customer. Card not authenticated.");
 			return null;
 		}
 	}
@@ -98,7 +99,6 @@ public class OfficeTerminal {
 	 * Register a new customer
 	 * 
 	 * @param cusName
-	 * @param cusDateOfBirth
 	 * @return
 	 * @throws BackOfficeException
 	 */
@@ -119,8 +119,8 @@ public class OfficeTerminal {
 				System.err.println("Please do not interupt me!");
 			}
 
-			command = CLI.prompt("\nPlease enter command.\n(1) Register new customer |"
-					+ " (2) View customer info | (3) Delete customer | (9) Exit\n(?): ");
+			command = CLI.prompt("\nPlease enter command.\n(1) Issue new card |"
+					+ " (2) View customer info | (3) Revoke existing card | (9) Exit\n(?): ");
 
 			/* Register new customer */
 			if (Integer.parseInt(command) == 1) {
@@ -132,7 +132,7 @@ public class OfficeTerminal {
 
 					name = CLI.prompt("Please enter client's name: ");
 
-					CLI.showln("Name is " + name + ".");
+					CLI.showln("Issuing card for " + name + ".");
 					while (!correct.equals("N") && !correct.equals("Y") && !correct.equals("C")) {
 						correct = CLI.prompt("Is this correct? (Y)es/(N)o/(C)ancel: ");
 					}
@@ -145,8 +145,10 @@ public class OfficeTerminal {
 				}
 
 				Customer cust;
+				
 				try {
 					cust = ot.registerNewCustomer(name);
+					ot.personalize(cust.getID());
 					CLI.showln("Client ID: " + cust.getID());
 				} catch (BackOfficeException e) {
 					System.err.println("Could not register new client.");
@@ -194,6 +196,7 @@ public class OfficeTerminal {
 				CLI.checkInt(cust);
 				try {
 					ot.deleteCustomer(cust);
+					ot.revoke(cust);
 					CLI.showln("Removed Customer with ID = " + cust + " from database.");
 				} catch (BackOfficeException e) {
 					System.err.println("Could not delete client.");
@@ -208,6 +211,54 @@ public class OfficeTerminal {
 			} else {
 				System.err.println("Incorrect command entered.");
 			}
+		}
+	}
+
+	/**
+	 * Personalize a card for a new customer
+	 * @param cardID the id of the card to be issued
+	 */
+	private void personalize(int cardID) {
+		byte[] data = new byte[CONSTANTS.NAME_LENGTH]; 
+		
+		System.arraycopy(Formatter.toByteArray(cardID), 0, data, 0, CONSTANTS.NAME_LENGTH);
+		
+		com.waitForCard();
+		
+		Response response = com.sendCommand(CONSTANTS.INS_PERSONALIZE_WRITE, data);
+		
+		if (response == null) {
+			System.out.println("Cannot personalize card.");
+			office.deleteCard(cardID);
+		} else if (!response.success()) {
+			System.out.println("Error: " + Formatter.toHexString(response.getStatus()));
+			office.deleteCard(cardID);
+		} else {
+			System.out.println("Card personalized");
+		}
+	}
+	
+	/**
+	 * Revoke an existing card
+	 * @param cardID the ID of the card to be revoked
+	 */
+	private void revoke(int cardID) {
+		byte[] data = new byte[CONSTANTS.NAME_LENGTH]; 
+		
+		System.arraycopy(Formatter.toByteArray(cardID), 0, data, 0, CONSTANTS.NAME_LENGTH);
+		
+		com.waitForCard();
+		
+		Response response = com.sendCommand(CONSTANTS.INS_REVOKE, data);
+		
+		if (response == null) {
+			System.out.println("Cannot revoke card.");
+			office.deleteCard(cardID);
+		} else if (!response.success()) {
+			System.out.println("Error: " + Formatter.toHexString(response.getStatus()));
+			office.deleteCard(cardID);
+		} else {
+			System.out.println("Card revoked");
 		}
 	}
 

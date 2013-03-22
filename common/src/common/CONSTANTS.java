@@ -7,7 +7,6 @@ package common;
  * @author Robin Oostrum
  */
 public class CONSTANTS {
-	// TODO Ensure only used constants remain.
 	public static final int KEY_SIZE = 512;
 	// public static final int SEQNR_BYTESIZE = 4;
 	public static final byte STATE_INIT = 0;
@@ -17,7 +16,7 @@ public class CONSTANTS {
 	public static final byte[] NAME_TERM = {(byte) 0x54, (byte) 0x45, (byte) 0x52, (byte) 0x4d}; // Hex for "TERM"
 	public static final byte[] NAME_CARD = {(byte) 0x43, (byte) 0x41, (byte) 0x52, (byte) 0x44}; // Hex for "CARD"
 	public static final short NAME_LENGTH = (short) 4;
-
+	
 	public static final byte CRYPTO_TYPE_SYMMETRIC = (byte) 0xC8;
 	public static final byte CRYPTO_TYPE_ASYMMETRIC = (byte) 0xC9;
 
@@ -55,11 +54,6 @@ public class CONSTANTS {
 	/* Success codes, as defined by ISO 7816, 5.1.3 */
 	public static final byte SW1_SUCCESS = (byte) 0x90;
 
-	// Our self defined code to indicate further response data
-	// Use: ISOException.throwIt(((SW1_MORE_DATA << 8) & 0xff00) | SW2_MORE_DATA);
-	public static final byte SW1_MORE_DATA = (byte) 0x67;
-	public static final byte SW2_MORE_DATA = (byte) 0x01;
-
 	/* Warning processing */
 	public static final byte SW1_NON_VOLATILE_UNCHANGED_WARN_00 = (byte) 0x62;
 	public static final byte SW1_NON_VOLATILE_CHANGED_WARN_00 = (byte) 0x63;
@@ -79,6 +73,7 @@ public class CONSTANTS {
 	public static final byte SW1_INS_NOT_SUPPORTED = (byte) 0x6D;
 	public static final byte SW1_CLASS_NOT_SUPPORTED = (byte) 0x6E;
 	public static final byte SW1_NO_PRECISE_DIAGNOSIS = (byte) 0x6F;
+	public static final byte SW1_ALREADY_PERSONALIZED = (byte) 0x70;
 
 	/* Self-Defined */
 	public static final byte SW1_AUTH_EXCEPTION = (byte) 0xAE;
@@ -111,6 +106,7 @@ public class CONSTANTS {
 	public static final byte SW2_AUTH_ALREADY_PERFORMED = (byte) 0xA8;
 	public static final byte SW2_AUTH_INCORRECT_MESSAGE_LENGTH = (byte) 0xA9;
 	public static final byte SW2_AUTH_CARD_KEY_NOT_INIT = (byte) 0xAA;
+	public static final byte SW2_WRONG_HASH = (byte) 0xAB;
 
 	public static final byte SW2_SESSION_ENCRYPT_ERR = (byte) 0xC2;
 	public static final byte SW2_CIPHERTEXT_NOT_ALIGNED = (byte) 0xC5;
@@ -128,7 +124,6 @@ public class CONSTANTS {
 	public static final short APDU_DATA_SIZE_MAX = (short) 236;
 	public static final short APDU_MESSAGE_CRYPTO_OVERHEAD = (short) 3;
 	public static final short APDU_MESSAGE_SIZE_MAX = APDU_DATA_SIZE_MAX + APDU_MESSAGE_CRYPTO_OVERHEAD;
-	// TODO Change DATA_SIZE_MAX to 512?
 	public static final short DATA_SIZE_MAX = (short) 1024;
 
 	public static final short NONCE_LENGTH = (short) 8;
@@ -136,7 +131,8 @@ public class CONSTANTS {
 	public static final short SEQ_LENGTH = (short) 4;
 	public static final short DATE_LENGTH = (short) 4;
 	public static final short CREDITS_LENGTH = (short) 2;
-	public static final short CREDITS_MAX = (short) 32767;
+	public static final short MAC_LENGTH = (short) 20;
+	public static final short CREDITS_MAX = (short) 25000;
 
 	// Only when using RSA 512 bit and AES 128 bit, obviously.
 	public static final short AES_IV_LENGTH = (short) 16;
@@ -187,4 +183,3 @@ public class CONSTANTS {
 	public static final short PUB_KEY_CARD_EXP_OFF = (short) 0;
 	public static final short PUB_KEY_CARD_MOD_OFF = (short) (PUB_KEY_CARD_EXP_OFF + RSA_KEY_PUBEXP_LENGTH);
 }
-

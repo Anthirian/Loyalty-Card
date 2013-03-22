@@ -13,10 +13,7 @@ import java.io.ObjectOutputStream;
 import java.security.NoSuchAlgorithmException;
 import java.security.KeyPair;
 import java.security.spec.InvalidKeySpecException;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
 
-import common.TerminalCrypto;
 import common.KeyManager;
 
 /**
@@ -29,7 +26,6 @@ class BackOfficeSimulator implements BackOffice {
 	private Hashtable<Integer, Customer> customers;
 	private Hashtable<Integer, Card> cards;
 	private KeyManager keymanager;
-	private TerminalCrypto crypto;
 	private KeyPair supermarketKeyPair;
 	private int lastCustomerId = 0;
 	private int lastCardId = 0;
@@ -37,7 +33,6 @@ class BackOfficeSimulator implements BackOffice {
 
 	public BackOfficeSimulator(String path) throws BackOfficeException {
 		keymanager = new KeyManager(path);
-		crypto = new TerminalCrypto();
 		boolean backofficeLoaded = false;
 
 		if (new File("backoffice.db").exists()) {
@@ -170,28 +165,13 @@ class BackOfficeSimulator implements BackOffice {
 	}
 
 	@Override
-	public IDKeyPair issueNewCard(Customer client) throws BackOfficeException {
+	public void issueCard(Customer client) throws BackOfficeException {
 		int cardId = ++lastCardId;
 
-		String ident = "Card_" + cardId;
-		KeyPair cardKeyPair;
-		try {
-			cardKeyPair = keymanager.generateAndSave(ident);
-		} catch (IOException e) {
-			throw new BackOfficeException("Could not save new card key", e);
-		} catch (NoSuchAlgorithmException e) {
-			throw new BackOfficeException("Could not save new card key", e);
-		}
-
-		RSAPublicKey cardPublicKey = (RSAPublicKey) cardKeyPair.getPublic();
-		Card newCard = new Card(cardPublicKey, cardId, (short) 0, client);
+		Card newCard = new Card(cardId, (short) 0, client);
 		client.setCard(newCard);
 		cards.put(cardId, newCard);
 		remoteSave();
-
-		IDKeyPair idKeys = new IDKeyPair(cardId, cardKeyPair);
-
-		return idKeys;
 	}
 
 	/**
@@ -227,21 +207,10 @@ class BackOfficeSimulator implements BackOffice {
 		customers.put(customerId, newCustomer);
 		remoteSave();
 
+		issueCard(newCustomer);
+		
 		return newCustomer;
 	}
-
-	/*
-	@Override
-	public byte[] sign(byte[] obj) throws BackOfficeException {
-		byte[] signedCert = crypto.sign(obj, (RSAPrivateKey) supermarketKeyPair
-				.getPrivate());
-		if (signedCert == null) {
-			throw new BackOfficeException(
-					"Failed to sign incoming data from front-office terminal");
-		}
-		return signedCert;
-	}
-	*/
 
 	@Override
 	public short getCredits(Customer client) throws BackOfficeException {

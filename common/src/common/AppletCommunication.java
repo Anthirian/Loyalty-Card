@@ -29,14 +29,15 @@ public class AppletCommunication {
 	private TerminalCrypto crypto;
 	private AppletSession session;
 
-	private byte messageCounter;
-
 	public AppletCommunication(AppletSession session) {
 		this.session = session;
 		this.session.setAppletCommunication(this);
 		this.crypto = new TerminalCrypto();
 	}
 
+	/**
+	 * Waits for card to be recognized by terminal
+	 */
 	public void waitForCard() {
 		System.out.print("Waiting for card...");
 		while (!connect()) {
@@ -46,12 +47,14 @@ public class AppletCommunication {
 		System.out.println("Card found: " + applet.getCard());
 	}
 
+	/**
+	 * Connects card to terminal
+	 */
 	public boolean connect() {
 		try {
 			if (connectToCard()) {
 				if (selectApplet()) {
 					this.session.reset();
-					this.messageCounter = 0;
 					return true;
 				}
 			}
@@ -71,6 +74,10 @@ public class AppletCommunication {
 		return false;
 	}
 
+	/**
+	 * Checks whether a card is present in the terminal
+	 * @return
+	 */
 	private boolean connectToCard() {
 		TerminalFactory tf = TerminalFactory.getDefault();
 		CardTerminals ct = tf.terminals();
@@ -113,6 +120,11 @@ public class AppletCommunication {
 		}
 	}
 
+	/**
+	 * Sends a CommandAPDU to, and returns the response from the card
+	 * @param capdu the CommandAPDU to be sent to the card
+	 * @return the ResponseAPDU from the card
+	 */
 	public ResponseAPDU sendCommandAPDU(CommandAPDU capdu) {
 		ResponseAPDU rapdu;	
 		log(capdu);
@@ -139,7 +151,6 @@ public class AppletCommunication {
 			return response;
 		} catch (SecurityException e) {
 			session.reset();
-			messageCounter = 0;
 			System.err.println(e.getMessage());
 		}
 		return null;
@@ -173,16 +184,29 @@ public class AppletCommunication {
 		}
 
 		rapdu = sendSessionCommand(CONSTANTS.CLA_DEF, instruction, p1, p2, data);
-		System.out.println("Terminal received: " + rapdu);
 		return processResponse(rapdu);
 	}
 
+	/**
+	 * Adds a hash and encrypts the entire command with the AES session key (when authenticated) 
+	 * @param cla
+	 * @param ins
+	 * @param p1
+	 * @param p2
+	 * @param data
+	 * @return
+	 */
 	private ResponseAPDU sendSessionCommand(int cla, int ins, int p1, int p2, byte[] data) {
+		byte[] buffer = new byte[data.length + CONSTANTS.MAC_LENGTH];
 		if (session.isAuthenticated()) {
-			data = crypto.encryptAES(data, session.getSessionKey());
+			System.arraycopy(data, 0, buffer, 0, data.length);
+			System.arraycopy(crypto.hash(data), 0, buffer, data.length, CONSTANTS.MAC_LENGTH);
+			buffer = crypto.encryptAES(buffer, session.getSessionKey());
 		}
-
-		CommandAPDU apdu = new CommandAPDU(cla, ins, p1, p2, data);
+		else {
+			buffer = data;
+		}
+		CommandAPDU apdu = new CommandAPDU(cla, ins, p1, p2, buffer);
 		return sendCommandAPDU(apdu);
 	}
 
