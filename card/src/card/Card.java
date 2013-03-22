@@ -788,8 +788,8 @@ public class Card extends Applet implements ISO7816 {
 	 * @return 0
 	 */
 	private short revoke() {
-		JCSystem.beginTransaction();
 		reset();
+		JCSystem.beginTransaction();
 		state = CONSTANTS.STATE_REVOKED;
 		JCSystem.commitTransaction();
 		return (short) 1;
@@ -799,13 +799,14 @@ public class Card extends Applet implements ISO7816 {
 	 * Resets all buffers and crypto-related objects
 	 */
 	void reset() {
-		JCSystem.beginTransaction();
+		//Ensure these buffers get cleared, even if a card tear occurs.
+		//JCSystem.beginTransaction();
 		clear(tmp);
 		clear(authBuf);
 		clear(authState);
 		clear(partnerName);
 		crypto.clearSessionData();
-		JCSystem.commitTransaction();
+		//JCSystem.commitTransaction();
 	}
 
 	/**
